@@ -62,7 +62,9 @@
     <body>
         <div class="container">
             <div class="content">
-                <img src="/imgs/voten-circle.png" alt="voten" class="logo">
+                <a href="/">
+                    <img src="/imgs/voten-circle.png" alt="voten" class="logo">
+                </a>
 
                 <div class="title">
                     Voten is under maintenance. We'll probably be back in a few minutes.
@@ -74,16 +76,12 @@
                     Twitter
                 </a>
 
-                <a href="https://facebook.com/voten.co">
-                    Facebook
+                <a href="https://github.com/voten-co/voten">
+                    Github
                 </a>
 
                 <a href="https://medium.com/voten">
                     Blog
-                </a>
-
-                <a href="https://reddit.com/r/voten">
-                    /r/voten
                 </a>
             </div>
         </div>

@@ -1,8 +1,8 @@
 const { mix } = require('laravel-mix');
 
-
-mix.js('resources/assets/js/app.js', 'public/js')
-	.js('resources/assets/js/landing.js', 'public/js')
+mix
+    .js('resources/assets/js/app.js', 'public/js')
+    .js('resources/assets/js/backend.js', 'public/js')
     .sass('resources/assets/sass/app.scss', 'public/css')
     .sass('resources/assets/sass/admin.scss', 'public/css')
     .sourceMaps()
@@ -10,23 +10,21 @@ mix.js('resources/assets/js/app.js', 'public/js')
         'vue',
         'axios',
         'lodash',
-        'jquery',
         'vue-ua',
-        'autosize',
-        'video.js',
         'pusher-js',
-        'vue-focus',
         'vue-router',
         'laravel-echo',
-        'vue-clickaway',
-        'vue-multiselect',
+        'element-ui',
         'moment-timezone',
-        'vue-template-compiler',
+        'vue-template-compiler'
     ])
     .autoload({
-        vue : 'Vue',
-        lodash : '_',
-        'pusher-js' : 'Pusher',
-        jquery: ['$', 'jQuery'],
-    })
-    .version()
+        vue: 'Vue',
+        lodash: '_',
+        'pusher-js': 'Pusher'
+    });
+
+// run versioning on production only
+if (mix.inProduction()) {
+    mix.version();
+}

@@ -1,50 +1,26 @@
 <template>
-	<div>
-		<user-header v-if="loaded"></user-header>
-
+	<div class="home-wrapper" id="user">
+		<user-header></user-header>
+	
 		<router-view></router-view>
 	</div>
 </template>
 
 <script>
-import UserHeader from '../components/UserHeader.vue'
+import UserHeader from '../components/UserHeader.vue';
 
 export default {
     components: {
-    	UserHeader
+        UserHeader
     },
 
-    data () {
-    	return {
-    		Store
-    	}
-    },
+    beforeRouteEnter(to, from, next) {
+        Store.page.user.submissions.clear();
+        Store.page.user.comments.clear();
+        Store.page.user.upVotedSubmissions.clear();
+        Store.page.user.downVotedSubmissions.clear();
 
-    created () {
-    	this.updateUserStore()
-    },
-
-    watch: {
-    	'$route': function () {
-    		this.updateUserStore()
-    	}
-    },
-
-    methods: {
-    	/**
-    	 * Checks if the Store.user is filled with right info, if it's not fetches the right ones
-    	 *
-    	 * @return void
-    	 */
-    	updateUserStore () {
-        	this.$root.getUserStore()
-    	}
-    },
-
-    computed: {
-    	loaded () {
-    		return Store.user.username == this.$route.params.username
-    	}
+        next();
     }
-}
+};
 </script>

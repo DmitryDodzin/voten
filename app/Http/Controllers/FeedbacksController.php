@@ -3,28 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Feedback;
+use App\Http\Resources\FeedbackResource;
 use App\Mail\NewFeedback;
 use Illuminate\Http\Request;
 
 class FeedbacksController extends Controller
 {
-    public function __construct()
-    {
-        $this->middleware('auth');
-    }
-
-    /**
-     * Display a listing of the feedback.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function index()
-    {
-        abort_unless($this->mustBeVotenAdministrator(), 403);
-
-        return Feedback::with('owner')->get();
-    }
-
     /**
      * Store a newly created feedback in storage.
      *
@@ -47,18 +31,28 @@ class FeedbacksController extends Controller
 
         \Mail::to('fischersully@gmail.com')->queue(new NewFeedback(auth()->user(), $feedback));
 
-        return response('Feedback submitted', 200);
+        return res(201, 'Feedback submitted');
+    }
+
+    public function get(Feedback $feedback)
+    {
+        return new FeedbackResource($feedback);
+    }
+
+    public function index()
+    {
+        return FeedbackResource::collection(
+            Feedback::simplePaginate(20)
+        );
     }
 
     /**
-     * Remove the specified feedback from storage.
+     * Destroy the specified feedback from storage.
      *
-     * @param int $id
+     * @param Request $request
      */
-    public function destroy(Request $request)
+    public function destroy($feedback_id)
     {
-        abort_unless($this->mustBeVotenAdministrator(), 403);
-
-        Feedback::findOrFail($request->id)->delete();
+        Feedback::withTrashed()->findOrFail($feedback_id)->delete();
     }
 }

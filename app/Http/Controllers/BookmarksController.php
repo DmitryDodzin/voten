@@ -3,7 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Filters;
-use App\Traits\CachableCategory;
+use App\Http\Resources\ChannelResource;
+use App\Http\Resources\CommentResource;
+use App\Http\Resources\SubmissionResource;
+use App\Http\Resources\UserResource;
+use App\Traits\CachableChannel;
 use App\Traits\CachableComment;
 use App\Traits\CachableSubmission;
 use App\Traits\CachableUser;
@@ -13,7 +17,7 @@ use Illuminate\Http\Request;
 
 class BookmarksController extends Controller
 {
-    use Filters, CachableUser, CachableCategory, CachableSubmission, CachableComment;
+    use Filters, CachableUser, CachableChannel, CachableSubmission, CachableComment;
 
     public function __construct()
     {
@@ -27,7 +31,9 @@ class BookmarksController extends Controller
      */
     public function getBookmarkedSubmissions()
     {
-        return Auth::user()->bookmarkedSubmissions()->simplePaginate(20);
+        return SubmissionResource::collection(
+            Auth::user()->bookmarkedSubmissions()->simplePaginate(20)
+        );
     }
 
     /**
@@ -37,27 +43,33 @@ class BookmarksController extends Controller
      */
     public function getBookmarkedComments()
     {
-        return $this->withoutChildren(Auth::user()->bookmarkedComments()->simplePaginate(20));
+        return CommentResource::collection(
+            Auth::user()->bookmarkedComments()->simplePaginate(20)
+        );
     }
 
     /**
-     * Favorited categories by Auth user.
+     * Favorited channels by Auth user.
      *
      * @return \Illuminate\Support\Collection
      */
-    public function getBookmarkedCategories()
+    public function getBookmarkedChannels()
     {
-        return Auth::user()->bookmarkedCategories()->simplePaginate(20);
+        return ChannelResource::collection(
+            Auth::user()->bookmarkedChannels()->simplePaginate(20)
+        );
     }
 
     /**
-     * Favorited categories by Auth user.
+     * Favorited channels by Auth user.
      *
      * @return \Illuminate\Support\Collection
      */
     public function getBookmarkedUsers()
     {
-        return Auth::user()->bookmarkedUsers()->simplePaginate(20);
+        return UserResource::collection(
+            Auth::user()->bookmarkedUsers()->simplePaginate(20)
+        );
     }
 
     /**
@@ -109,24 +121,24 @@ class BookmarksController extends Controller
     }
 
     /**
-     * (un)Bookmarks the category.
+     * (un)Bookmarks the channel.
      *
      * @return status
      */
-    public function bookmarkCategory(Request $request)
+    public function bookmarkChannel(Request $request)
     {
         $this->validate($request, [
             'id' => 'required|integer',
         ]);
 
-        $category = $this->getCategoryById($request->id);
+        $channel = $this->getChannelById($request->id);
 
-        $type = $category->bookmark();
+        $type = $channel->bookmark();
 
         if ($type == 'bookmarked') {
-            $this->updateBookmarkedCategories(Auth::user()->id, $category->id, true);
+            $this->updateBookmarkedChannels(Auth::user()->id, $channel->id, true);
         } else {
-            $this->updateBookmarkedCategories(Auth::user()->id, $category->id, false);
+            $this->updateBookmarkedChannels(Auth::user()->id, $channel->id, false);
         }
 
         return $type;

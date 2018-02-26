@@ -30,12 +30,24 @@ class EventServiceProvider extends ServiceProvider
             'App\Listeners\PatchedComment',
         ],
 
-        'App\Events\CategoryWasUpdated' => [
-            'App\Listeners\UpdatedCategory',
+        'App\Events\ChannelWasUpdated' => [
+            'App\Listeners\UpdatedChannel',
         ],
 
         'App\Events\ReportWasCreated' => [
             'App\Listeners\NewReport',
+        ],
+
+        'Illuminate\Auth\Events\Registered' => [
+            'App\Listeners\UserRegistered',
+        ],
+
+        'Illuminate\Auth\Events\Login' => [
+            'App\Listeners\UserLoggedIn',
+        ],
+
+        'Illuminate\Auth\Events\Logout' => [
+            'App\Listeners\UserLoggedOut',
         ],
     ];
 

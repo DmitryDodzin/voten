@@ -6,6 +6,7 @@ use App\Comment;
 use App\Submission;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -69,10 +70,26 @@ class CommentReplied extends Notification implements ShouldBroadcast
     public function toArray($notifiable)
     {
         return [
-            'url'    => '/c/'.$this->submission->category_name.'/'.$this->submission->slug.'?comment='.$this->comment->id,
+            'url'    => '/c/'.$this->submission->channel_name.'/'.$this->submission->slug.'?comment='.$this->comment->id,
             'name'   => $this->comment->owner->username,
             'avatar' => $this->comment->owner->avatar,
             'body'   => '@'.$this->comment->owner->username.' replied to your comment on "'.$this->submission->title.'"',
         ];
+    }
+
+    /**
+     * Get the broadcastable representation of the notification.
+     *
+     * @param mixed $notifiable
+     *
+     * @return BroadcastMessage
+     */
+    public function toBroadcast($notifiable)
+    {
+        return new BroadcastMessage([
+            'data'       => $this->toArray($notifiable),
+            'created_at' => now(),
+            'read_at'    => null,
+        ]);
     }
 }

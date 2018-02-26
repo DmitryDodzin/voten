@@ -1,95 +1,108 @@
 <template>
-    <div class="v-modal-small" :class="{ 'width-100': !sidebar }">
-        <div class="v-modal-small-box" v-on-clickaway="close">
-            <div class="flex1">
-                <h2 class="align-center">
-                    Moderators
-                </h2>
+    <el-dialog
+            title="Moderators"
+            :visible="visible"
+            :width="isMobile ? '99%' : '550px'"
+            @close="close"
+            append-to-body
+            class="user-select"
+    >
+        <div class="flex-center" v-show="loading">
+            <loading></loading>
+        </div>
 
-                <loading v-show="loading"></loading>
+        <div class="small-modal-user" v-for="item in list" :key="item.user.id">
+            <div>
+                <router-link :to="'/@' + item.user.username">
+                    <img :src="item.user.avatar" :alt="item.user.username">
+                </router-link>
 
-                <div class="small-modal-user" v-for="user in list">
-                    <router-link :to="'/@' + user.username">
-                        <img :src="user.avatar" :alt="user.username">
-                    </router-link>
+                <router-link :to="'/@' + item.user.username">
+                    {{ '@' + item.user.username }}
+                </router-link>
+            </div>
 
-                    <router-link :to="'/@' + user.username">
-                        {{ '@' + user.username }}
-                    </router-link>
-                </div>
-
-                <button type="button" class="v-button v-button--green v-button--block"
-                    data-toggle="tooltip" data-placement="bottom" title="Close (esc)"
-                    @click="close">
-                    Close
-                </button>
+            <div>
+                <el-button round type="success" plain size="mini" @click="sendMessage(item.user)"
+                           v-if="item.user.username !== auth.username">
+                    Send a message
+                </el-button>
             </div>
         </div>
-    </div>
+    </el-dialog>
 </template>
 
-<style>
-    .small-modal-user {
-        /*display: flex;
-        justify-content: space-between;
-        align-items: center;*/
-    }
-
-    .small-modal-user img {
-        width: 4em;
-        height: auto;
-        margin: 1em;
-        border-radius: 50%;
-        border: 1px solid #635d5d;
-    }
-</style>
-
 <script>
-import Loading from '../components/Loading.vue'
-import { mixin as clickaway } from 'vue-clickaway';
+import Loading from '../components/SimpleLoading.vue';
+import Helpers from '../mixins/Helpers';
 
 export default {
-	props: ['sidebar'],
-
-    mixins: [ clickaway ],
+    mixins: [Helpers],
 
     components: {
         Loading
     },
 
-    data () {
+    props: ['visible'],
+
+    data() {
         return {
             list: [],
-            loading: true,
-        }
+            loading: true
+        };
     },
 
-    created: function () {
+    created() {
         this.getModerators();
     },
 
     methods: {
         getModerators() {
-            axios.get( '/category-moderators', {
-                params: {
-                	name: this.$route.params.name
-                }
-            }).then((response) => {
-                this.list = response.data;
-                this.loading = false
-            });
+            axios
+                .get('/moderators', {
+                    params: {
+                        channel_name: this.$route.params.name
+                    }
+                })
+                .then((response) => {
+                    this.list = response.data.data;
+                    this.loading = false;
+                })
+                .catch(() => {
+                    this.loading = false;
+                });
         },
 
-    	/**
-    	 * Fires the 'close' event which causes all the modals to be closed.
-    	 *
-    	 * @return void
-    	 */
-    	close () {
-    		this.$eventHub.$emit('close')
-    	},
-    },
+        close() {
+            this.$emit('update:visible', false);
+        },
 
+        sendMessage(user) {
+            if (this.isGuest) {
+                this.mustBeLogin();
+                return;
+            }
+
+            this.$eventHub.$emit('start-conversation', user);
+            this.close();
+        }
+    }
+};
+</script>
+
+<style>
+.small-modal-user {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-</script>
+.small-modal-user img {
+    width: 4em;
+    height: auto;
+    margin: 1em;
+    margin-left: 0;
+    border-radius: 50%;
+    border: 1px solid #635d5d;
+}
+</style>

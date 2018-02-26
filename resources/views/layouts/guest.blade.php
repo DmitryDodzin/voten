@@ -6,6 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     @yield('head')
+
+    @yield('title')
+
     <link rel="stylesheet" href="{{ mix('/css/app.css') }}">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.4.5/socket.io.min.js"></script>
@@ -16,72 +19,41 @@
     <!-- CSRF Token -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <script>
-        window.Laravel = <?php echo json_encode([
-            'csrfToken' => csrf_token(),
-            'env' => config('app.env'),
-            'pusherKey' => config('broadcasting.connections.pusher.key'),
-            'pusherCluster' => config('broadcasting.connections.pusher.options.cluster'),
-        ]); ?>
-    </script>
+    @include('env-to-js-data')
 
     <link rel="shortcut icon" href="/imgs/favicon.png">
-    @include('user.user-style')
 </head>
 
 <body>
 @include('google-analytics')
 
-<div id="voten-app" :class="{ 'background-white': Store.contentRouter != 'content' }">
-    @include('app-header')
+<div id="voten-app">
+    <vue-progress-bar></vue-progress-bar>
 
     <div class="v-content-wrapper">
-		<div class="v-side" v-show="sidebar">
-		    <guest-sidebar></guest-sidebar>
-		</div>
+		<left-sidebar></left-sidebar>
 
-		<search-modal v-if="Store.contentRouter == 'search'" :sidebar="sidebar"></search-modal>
-
-        <div class="v-content" id="v-content" v-show="Store.contentRouter == 'content'" @scroll="scrolled">
-            <transition name="fade">
-                <rules v-if="modalRouter == 'rules'" :sidebar="sidebar"></rules>
-                <moderators v-if="modalRouter == 'moderators'" :sidebar="sidebar"></moderators>
-                <keyboard-shortcuts-guide v-if="modalRouter == 'keyboard-shortcuts-guide'" :sidebar="sidebar"></keyboard-shortcuts-guide>
-                <markdown-guide v-if="modalRouter == 'markdown-guide'" :sidebar="sidebar"></markdown-guide>
-                <login-modal v-if="modalRouter == 'login'" :sidebar="sidebar"></login-modal>
-            </transition>
-
-            <div :class="{ 'v-blur-blackandwhite': smallModal }">
-                @yield('content')
-            </div>
+        <div class="v-content" id="v-content" @scroll.passive="scrolled">
+            @yield('content')
         </div>
+
+        <guest-sidebar v-show="showSidebars"></guest-sidebar>
     </div>
 
-    <scroll-button></scroll-button>
+    <photo-viewer v-if="Store.modals.photoViewer.show" :visible.sync="Store.modals.photoViewer.show"></photo-viewer>
+    <gif-player v-if="Store.modals.gifPlayer.show" :visible.sync="Store.modals.gifPlayer.show"></gif-player>
+    <embed-viewer v-if="Store.modals.embedViewer.show" :visible.sync="Store.modals.embedViewer.show"></embed-viewer>
+    <search-modal v-if="Store.modals.search.show"></search-modal>
+    <authentication-modal v-if="Store.modals.authintication.show" :visible.sync="Store.modals.authintication.show"></authentication-modal>
+    <markdown-guide v-if="Store.modals.markdownGuide.show" :visible.sync="Store.modals.markdownGuide.show"></markdown-guide>
+    <keyboard-shortcuts-guide v-if="Store.modals.keyboardShortcutsGuide.show" :visible.sync="Store.modals.keyboardShortcutsGuide.show"></keyboard-shortcuts-guide>
+    <mobile-visitor-warning v-if="Store.modals.mobileVisitorWarning.show" :visible.sync="Store.modals.mobileVisitorWarning.show"></mobile-visitor-warning>
 </div>
 
-<script>
-    var auth = {
-        font: 'Lato',
-        nsfw: {{ 'false' }},
-        nsfwMedia: {{ 'false' }},
-        sidebar_color: 'Gray',
-        isMobileDevice: {{ isMobileDevice() ? 'true' : 'false' }},
-        <?php
-            if (isMobileDevice()) {
-                $submission_small_thumbnail = 'false';
-            } else {
-                $submission_small_thumbnail = 'true';
-            }
-        ?>
-        submission_small_thumbnail: {{ $submission_small_thumbnail }},
-        isGuest: {{ 'true' }}
-    };
-
-    var preload = {};
-</script>
+@include('php-to-js-data')
 
 @yield('script')
+    <script src='https://www.google.com/recaptcha/api.js'></script>
 	<script src="{{ mix('/js/manifest.js') }}"></script>
 	<script src="{{ mix('/js/vendor.js') }}"></script>
 	<script src="{{ mix('/js/app.js') }}"></script>

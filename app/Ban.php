@@ -9,12 +9,23 @@ class Ban extends Model
     use RecordsActivity;
 
     /**
-     *   The attributes that are mass assignable.
+     * The attributes that are mass assignable.
      *
-     *   @var array
+     * @var array
      */
     protected $fillable = [
-        'user_id', 'category', 'description', 'unban_at',
+        'user_id', 'channel', 'description', 'unban_at',
+    ];
+
+    /**
+     * The attributes that should be mutated to dates.
+     *
+     * @var array
+     */
+    protected $dates = [
+        'created_at',
+        'updated_at',
+        'unban_at',
     ];
 
     public function user()

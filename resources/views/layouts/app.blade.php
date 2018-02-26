@@ -16,88 +16,53 @@
     <!-- CSRF Token -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <script>
-        window.Laravel = <?php echo json_encode([
-            'csrfToken' => csrf_token(),
-            'env' => config('app.env'),
-            'pusherKey' => config('broadcasting.connections.pusher.key'),
-            'pusherCluster' => config('broadcasting.connections.pusher.options.cluster'),
-        ]); ?>
-    </script>
+    @include('env-to-js-data')
 
     <link rel="shortcut icon" href="/imgs/favicon.png">
-    @include('user.user-style')
 </head>
 
 <body>
+
 @include('google-analytics')
 
-<div id="voten-app" :class="{ 'background-white': Store.contentRouter != 'content' }">
-    @include('app-header')
+<div id="voten-app">
+    <vue-progress-bar></vue-progress-bar>
+
+    <div class="shade" v-if="showTour"></div>
+    <tour v-if="showTour && activeTour.id == 'os-notifications'" :position="{ top: '7em', left: '39%' }"></tour>
 
     <div class="v-content-wrapper">
-		<div class="v-side {{ settings('sidebar_color') }}" v-show="sidebar">
-		    <sidebar></sidebar>
-		</div>
+        <left-sidebar v-show="showSidebars"></left-sidebar>
 
-		<notifications v-show="Store.contentRouter == 'notifications'"></notifications>
-		<messages v-show="Store.contentRouter == 'messages'" :sidebar="sidebar"></messages>
-		<search-modal v-if="Store.contentRouter == 'search'" :sidebar="sidebar"></search-modal>
-
-        <div class="v-content" id="v-content" v-show="Store.contentRouter == 'content'" @scroll="scrolled">
-            <transition name="fade">
-                <report-submission v-if="modalRouter == 'report-submission'" :submission="reportSubmissionId" :category="reportCategory" :sidebar="sidebar"></report-submission>
-                <report-comment v-if="modalRouter == 'report-comment'" :comment="reportCommentId" :category="reportCategory" :sidebar="sidebar"></report-comment>
-                <feedback v-if="modalRouter == 'feedback'" :sidebar="sidebar"></feedback>
-                <rules v-if="modalRouter == 'rules'" :sidebar="sidebar"></rules>
-                <moderators v-if="modalRouter == 'moderators'" :sidebar="sidebar"></moderators>
-                <keyboard-shortcuts-guide v-if="modalRouter == 'keyboard-shortcuts-guide'" :sidebar="sidebar"></keyboard-shortcuts-guide>
-                <markdown-guide v-if="modalRouter == 'markdown-guide'" :sidebar="sidebar"></markdown-guide>
-            </transition>
-            <crop-modal v-if="modalRouter == 'crop-user'" :sidebar="sidebar" :type="'user'"></crop-modal>
-            <crop-modal v-if="modalRouter == 'crop-category'" :sidebar="sidebar" :type="'category'"></crop-modal>
-
-            <div :class="{ 'v-blur-blackandwhite': smallModal }">
-                @yield('content')
-            </div>
+        <div class="v-content" id="v-content" @scroll.passive="scrolled">
+            <announcement></announcement>
+            
+            @yield('content')
         </div>
+
+        <right-sidebar v-show="showSidebars"></right-sidebar>
     </div>
 
-    <scroll-button></scroll-button>
+    <messages v-show="Store.modals.messages.show"></messages>
+    <search-modal v-if="Store.modals.search.show"></search-modal>    
+    <sidebar-settings :visible.sync="Store.modals.sidebarSettings.show" v-if="Store.modals.sidebarSettings.show"></sidebar-settings>
+    <feed-settings :visible.sync="Store.modals.feedSettings.show" v-if="Store.modals.feedSettings.show && isLoggedIn"></feed-settings>
+    <report-comment :visible.sync="Store.modals.reportComment.show" v-if="Store.modals.reportComment.show"></report-comment>
+    <report-submission :visible.sync="Store.modals.reportSubmission.show" v-if="Store.modals.reportSubmission.show"></report-submission>
+    <notifications :visible.sync="Store.modals.notifications.show" v-show="Store.modals.notifications.show"></notifications>
+    <new-submission v-show="Store.modals.newSubmission.show" :visible.sync="Store.modals.newSubmission.show"></new-submission>
+    <preferences v-if="Store.modals.preferences.show" :visible.sync="Store.modals.preferences.show"></preferences>
+    <new-channel v-show="Store.modals.newChannel.show" :visible.sync="Store.modals.newChannel.show"></new-channel>
+    <markdown-guide v-if="Store.modals.markdownGuide.show" :visible.sync="Store.modals.markdownGuide.show"></markdown-guide>
+    <feedback v-if="Store.modals.feedback.show" :visible.sync="Store.modals.feedback.show"></feedback>
+    <photo-viewer v-if="Store.modals.photoViewer.show" :visible.sync="Store.modals.photoViewer.show"></photo-viewer>
+    <gif-player v-if="Store.modals.gifPlayer.show" :visible.sync="Store.modals.gifPlayer.show"></gif-player>
+    <embed-viewer v-if="Store.modals.embedViewer.show" :visible.sync="Store.modals.embedViewer.show"></embed-viewer>
+    <keyboard-shortcuts-guide v-if="Store.modals.keyboardShortcutsGuide.show" :visible.sync="Store.modals.keyboardShortcutsGuide.show"></keyboard-shortcuts-guide>
+    <mobile-visitor-warning v-if="Store.modals.mobileVisitorWarning.show" :visible.sync="Store.modals.mobileVisitorWarning.show"></mobile-visitor-warning>
 </div>
 
-<script>
-    var auth = {
-        id: '{{ Auth::user()->id }}',
-        bio: {!! json_encode(Auth::user()->bio) !!},
-        name: '{{ Auth::user()->name }}',
-        email: '{{ Auth::user()->email }}',
-        color: '{{ Auth::user()->color }}',
-        avatar: '{{ Auth::user()->avatar }}',
-        location: '{{ Auth::user()->location }}',
-        username: '{{ Auth::user()->username }}',
-        created_at: '{{ Auth::user()->created_at }}',
-        font: '{{ settings('font') }}',
-        nsfw: {{ settings('nsfw') ? 'true' : 'false' }},
-        nsfwMedia: {{ settings('nsfw_media') ? 'true' : 'false' }},
-        sidebar_color: '{{ settings('sidebar_color') }}',
-        notify_comments_replied: {{ settings('notify_comments_replied') ? 'true' : 'false' }},
-        notify_submissions_replied: {{ settings('notify_submissions_replied') ? 'true' : 'false' }},
-        notify_mentions: {{ settings('notify_mentions') ? 'true' : 'false' }},
-        exclude_upvoted_submissions: {{ settings('exclude_upvoted_submissions') ? 'true' : 'false' }},
-        exclude_downvoted_submissions: {{ settings('exclude_downvoted_submissions') ? 'true' : 'false' }},
-        isMobileDevice: {{ isMobileDevice() ? 'true' : 'false' }},
-        submission_small_thumbnail: {{ isMobileDevice() ? 'false' : 'true' }},
-        info: {
-            website: '{{ Auth::user()->info['website'] }}',
-            twitter: '{{ Auth::user()->info['twitter'] }}'
-        },
-        stats: {!! Auth::user()->stats() !!},
-        isGuest: {{ 'false' }}
-    };
-
-    var preload = {};
-</script>
+@include('php-to-js-data')
 
 @yield('script')
 	<script src="{{ mix('/js/manifest.js') }}"></script>

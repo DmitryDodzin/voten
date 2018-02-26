@@ -1,87 +1,80 @@
 <template>
-	<section>
-        <bookmarked-user v-for="user in users" :list="user" :key="user.id"></bookmarked-user>
+	<section 
+		class="bookmarked-items"
+		:class="{'flex-center' : nothingFound}"
+		v-infinite-scroll="loadMore" infinite-scroll-disabled="cantLoadMore"
+	>
+		<div class="index-channels">
+			<bookmarked-user v-for="user in users" :list="user" :key="user.id"></bookmarked-user>			
+		</div>
 
-	    <no-content v-if="nothingFound" :text="'You have not bookmarked any users yet'"></no-content>
-
-		<loading v-show="loading"></loading>
-
+	    <no-content v-if="nothingFound" :text="'No bookmarked users yet'" icon="user"></no-content>
+		<loading v-if="loading && page > 1"></loading>
 		<no-more-items :text="'No more items to load'" v-if="NoMoreItems && !nothingFound"></no-more-items>
 	</section>
 </template>
 
 <script>
-    import Loading from '../components/Loading.vue'
-    import BookmarkedUser from '../components/BookmarkedUser.vue'
-	import NoMoreItems from '../components/NoMoreItems.vue'
-    import NoContent from '../components/NoContent.vue'
+import BookmarkedUser from '../components/BookmarkedUser.vue';
+import NoMoreItems from '../components/NoMoreItems.vue';
+import NoContent from '../components/NoContent.vue';
+import Loading from '../components/Loading.vue';
+import Helpers from '../mixins/Helpers';
 
-    export default {
-        components: {
-        	NoContent,
-        	BookmarkedUser,
-        	Loading,
-			NoMoreItems
+export default {
+    mixins: [Helpers],
+
+    components: {
+        NoContent,
+        Loading,
+        BookmarkedUser,
+        NoMoreItems
+    },
+
+    computed: {
+        cantLoadMore() {
+            return this.loading || this.NoMoreItems || this.nothingFound;
         },
 
-        data: function () {
-            return {
-	            NoMoreItems: false,
-				loading: true,
-                nothingFound: false,
-                users: [],
-				page: 0
-            }
+        NoMoreItems() {
+            return Store.page.bookmarkedUsers.NoMoreItems;
         },
 
-        created () {
-			this.$eventHub.$on('scrolled-to-bottom', this.loadMore)
-            this.getUsers()
+        nothingFound() {
+            return Store.page.bookmarkedUsers.nothingFound;
         },
 
-	    watch: {
-			'$route': function () {
-				this.clearContent()
-				this.getUsers()
-			}
-		},
+        users() {
+            return Store.page.bookmarkedUsers.users;
+        },
 
+        loading() {
+            return Store.page.bookmarkedUsers.loading;
+        },
 
-        methods: {
-			loadMore () {
-				if ( Store.contentRouter == 'content' && !this.loading && !this.NoMoreItems ) {
-					this.getUsers()
-				}
-			},
-
-        	clearContent () {
-				this.nothingFound = false
-				this.users = []
-				this.loading = true
-        	},
-
-            getUsers () {
-				this.loading = true
-				this.page ++
-
-            	axios.get('/bookmarked-users', {
-            		params: {
-                        page: this.page
-					}
-            	}).then((response) => {
-					this.users = [...this.users, ...response.data.data]
-
-					if (response.data.next_page_url == null) {
-						this.NoMoreItems = true
-					}
-
-					if(this.users.length == 0){
-						this.nothingFound = true
-					}
-
-					this.loading = false
-                })
-            }
+        page() {
+            return Store.page.bookmarkedUsers.page;
         }
-    };
+    },
+
+    methods: {
+        loadMore() {
+            Store.page.bookmarkedUsers.getUsers();
+        }
+    },
+
+    beforeRouteEnter(to, from, next) {
+        if (!Store.page.bookmarkedUsers.page > 0) {
+            if (typeof app != 'undefined') {
+                app.$Progress.start();
+            }
+
+            Store.page.bookmarkedUsers.getUsers().then(() => {
+                next((vm) => vm.$Progress.finish());
+            });
+        } else {
+            next();
+        }
+    }
+};
 </script>

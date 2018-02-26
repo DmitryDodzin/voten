@@ -1,117 +1,126 @@
 <template>
-    <div class="v-modal-small user-select" :class="{ 'width-100': !sidebar }">
-        <div class="v-modal-small-box" v-on-clickaway="close">
-            <div class="flex1" v-if="! messageSent">
-                <p>
-                    Please help us understand the problem. What is wrong with this comment?
-                </p>
+    <el-dialog
+            title="Report Comment"
+            :visible="visible"
+            :width="isMobile ? '99%' : '600px'"
+            @close="close"
+            append-to-body
+            class="user-select"
+    >
+        <el-form label-position="top" label-width="10px">
+            <p>
+                Please help us understand the problem. What is wrong with this comment?
+            </p>
 
-                <div class="form-group grouped fields">
-                    <div class="field">
-                        <div class="ui radio checkbox">
-                            <input type="radio" value="It doesn't follow channel's exclusive rules" tabindex="0" class="hidden" v-model="subject">
-                            <label>It doesn't follow #{{category}}'s exclusive rules</label>
-                        </div>
-                    </div>
-                    <div class="field">
-                        <div class="ui radio checkbox">
-                            <input type="radio" value="It doesn't follow Voten's general rules" tabindex="0" class="hidden" v-model="subject">
-                            <label>It doesn't follow Voten's general rules</label>
-                        </div>
-                    </div>
-                    <div class="field">
-                        <div class="ui radio checkbox">
-                            <input type="radio" value="It's abusive or harmful" tabindex="0" class="hidden" v-model="subject">
-                            <label>It's abusive or harmful</label>
-                        </div>
-                    </div>
-                    <div class="field">
-                        <div class="ui radio checkbox">
-                            <input type="radio" value="Other" tabindex="0" class="hidden" v-model="subject">
-                            <label>Other</label>
-                        </div>
-                    </div>
-                </div>
+            <el-form-item label="Subject">
+                <el-select v-model="subject" placeholder="Subject">
+                    <el-option
+                            v-for="item in subjects"
+                            :key="item"
+                            :label="item"
+                            :value="item">
+                    </el-option>
+                </el-select>
+            </el-form-item>
 
-                <div class="form-group">
-                    <textarea name="name" class="form-control" rows="2" id="report-comment"
-                        placeholder="(optional) Additional desciption..."
+            <el-form-item label="Additional Description">
+                <el-input
+                        type="textarea"
                         v-model="description"
-                    ></textarea>
-                </div>
+                        placeholder="(optional) Additional desciption..."
+                        name="description"
+                        :maxlength="1000"
+                        :rows="4"
+                        ref="description"
+                ></el-input>
+            </el-form-item>
+        </el-form>
 
-                <button type="button" class="v-button v-button--green"
-                @click="send" >
-                    Submit Report
-                </button>
+        <!-- submit -->
+        <span slot="footer" class="dialog-footer">
+            <el-button type="text" @click="close" size="medium" class="margin-right-1">
+                Cancel
+            </el-button>
 
-                <button type="button" class="v-button v-button--red"
-                    data-toggle="tooltip" data-placement="bottom" title="Close (esc)"
-                    @click="close">
-                    Cancel
-                </button>
-            </div>
-
-            <div class="padding-top-bottom-3 sent align-center" v-else>
-                <i class="v-icon v-success" aria-hidden="true"
-                    :class="{ 'rubberBand animated': messageSent }"
-                ></i>
-
-                <p>
-                    Thank you for reporting.
-                </p>
-            </div>
-
-        </div>
-    </div>
+            <el-button round type="success" @click="send" :loading="sending" size="medium">
+                Submit
+            </el-button>
+        </span>
+    </el-dialog>
 </template>
 
 <script>
-import { mixin as clickaway } from 'vue-clickaway';
+import Helpers from '../mixins/Helpers';
 
 export default {
+    mixins: [Helpers],
 
-    props: ['comment', 'category', 'sidebar'],
+    props: ['visible'],
 
-    mixins: [ clickaway ],
-
-    data () {
+    data() {
         return {
-            subject: "It doesn't follow channel's exclusive rules",
-            description: "",
-            messageSent: false,
+            subject: "It's spam",
+            description: '',
+            sending: false,
+            subjects: [
+                "It's spam",
+                "It doesn't follow channel's exclusive rules",
+                "It doesn't follow Voten's general rules",
+                "It's abusive or harmful",
+                'Other'
+            ]
+        };
+    },
+
+    mounted() {
+        this.$nextTick(function() {
+            this.$refs.description.$refs.textarea.focus();
+        });
+    },
+
+    beforeDestroy() {
+        if (window.location.hash == '#reportComment') {
+            history.go(-1);
         }
     },
 
-	mounted: function () {
-		this.$nextTick(function () {
-    		$('.ui.checkbox').checkbox()
-	    	document.getElementById('report-comment').focus()
-	    	this.$root.autoResize()
-		})
-	},
+    created() {
+        window.location.hash = 'reportComment';
+    },
+
+    computed: {
+        comment() {
+            return Store.modals.reportComment.comment;
+        }
+    },
 
     methods: {
-        send: function(){
-            this.messageSent = true;
+        send() {
+            this.sending = true;
 
-            axios.post( '/report-comment', {
-                comment_id: this.comment,
-                subject: this.subject,
-                description: this.description
-            });
+            axios
+                .post('/comments/reports', {
+                    id: this.comment.id,
+                    subject: this.subject,
+                    description: this.description
+                })
+                .then(() => {
+                    this.$message({
+                        message: 'Report submitted. Thanks for caring!',
+                        type: 'success'
+                    });
 
-            setTimeout(function () { this.close() }.bind(this), 1500)
+                    this.close();
+                    this.sending = false;
+                })
+                .catch(() => {
+                    this.sending = false;
+                });
         },
 
-    	/**
-    	 * Fires the 'close' event which causes all the modals to be closed.
-    	 *
-    	 * @return void
-    	 */
-    	close () {
-    		this.$eventHub.$emit('close')
-    	},
-    },
-}
+        close() {
+            this.$emit('update:visible', false);
+        }
+    }
+};
 </script>

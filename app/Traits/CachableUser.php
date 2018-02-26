@@ -22,17 +22,18 @@ trait CachableUser
             'submissionsCount' => $user->submissions()->count(),
             'commentsCount'    => $user->comments()->count(),
 
-            'submissionKarma' => $user->submission_karma,
-            'commentKarma'    => $user->comment_karma,
+            'submissionXp' => $user->submission_xp,
+            'commentXp'    => $user->comment_xp,
 
             'hiddenSubmissions' => $user->hiddenSubmissions(),
+            'hiddenChannels'    => $user->hiddenChannels(),
             'subscriptions'     => $user->subscriptions->pluck('id'),
 
             'blockedUsers' => $user->blockedUsers(),
 
             'bookmarkedSubmissions' => DB::table('bookmarks')->where(['user_id' => $user->id, 'bookmarkable_type' => 'App\Submission'])->pluck('bookmarkable_id'),
             'bookmarkedComments'    => DB::table('bookmarks')->where(['user_id' => $user->id, 'bookmarkable_type' => 'App\Comment'])->pluck('bookmarkable_id'),
-            'bookmarkedCategories'  => DB::table('bookmarks')->where(['user_id' => $user->id, 'bookmarkable_type' => 'App\Category'])->pluck('bookmarkable_id'),
+            'bookmarkedChannels'    => DB::table('bookmarks')->where(['user_id' => $user->id, 'bookmarkable_type' => 'App\Channel'])->pluck('bookmarkable_id'),
             'bookmarkedUsers'       => DB::table('bookmarks')->where(['user_id' => $user->id, 'bookmarkable_type' => 'App\User'])->pluck('bookmarkable_id'),
 
             'submissionUpvotes'   => $user->submissionUpvotesIds(),
@@ -61,7 +62,7 @@ trait CachableUser
         }
 
         $stats = Redis::hmget('user.'.$id.'.data',
-                        'submissionsCount', 'commentsCount', 'submissionKarma', 'commentKarma');
+                        'submissionsCount', 'commentsCount', 'submissionXp', 'commentXp');
 
         // if user's data is not cached, then fetch it from database and then cache it
         if (json_decode($stats[0]) === null || json_decode($stats[1]) === null || json_decode($stats[2]) === null || json_decode($stats[3]) === null) {
@@ -70,16 +71,16 @@ trait CachableUser
             return collect([
                 'submissionsCount' => $stats['submissionsCount'],
                 'commentsCount'    => $stats['commentsCount'],
-                'submission_karma' => $stats['submissionKarma'],
-                'comment_karma'    => $stats['commentKarma'],
+                'submission_xp'    => $stats['submissionXp'],
+                'comment_xp'       => $stats['commentXp'],
             ]);
         }
 
         return collect([
             'submissionsCount' => json_decode($stats[0]),
             'commentsCount'    => json_decode($stats[1]),
-            'submission_karma' => json_decode($stats[2]),
-            'comment_karma'    => json_decode($stats[3]),
+            'submission_xp'    => json_decode($stats[2]),
+            'comment_xp'       => json_decode($stats[3]),
         ]);
     }
 
@@ -104,6 +105,26 @@ trait CachableUser
     }
 
     /**
+     * Returns the IDs of auth uers's hidden channels.
+     *
+     * @return array
+     */
+    protected function hiddenChannels($id = 0)
+    {
+        if ($id === 0) {
+            $id = Auth::id();
+        }
+
+        if ($value = Redis::hget('user.'.$id.'.data', 'hiddenChannels')) {
+            return json_decode($value);
+        }
+
+        $result = $this->cacheUserData($id);
+
+        return json_decode($result['hiddenChannels']);
+    }
+
+    /**
      * updates the hiddenSubmissions records of the auth user.
      *
      * @param int $id
@@ -123,6 +144,28 @@ trait CachableUser
         }
 
         Redis::hset('user.'.$id.'.data', 'hiddenSubmissions', json_encode($hiddenSubmissions));
+    }
+
+    /**
+     * updates the hiddenChannels records of the auth user.
+     *
+     * @param int $id
+     * @param int $channel_id
+     *
+     * @return void
+     */
+    protected function updateHiddenChannels($id, $channel_id)
+    {
+        $hiddenChannels = $this->hiddenChannels($id);
+
+        array_push($hiddenChannels, $channel_id);
+
+        // we need to make sure the cached data exists
+        if (!Redis::hget('user.'.$id.'.data', 'hiddenChannels')) {
+            $this->cacheUserData($id);
+        }
+
+        Redis::hset('user.'.$id.'.data', 'hiddenChannels', json_encode($hiddenChannels));
     }
 
     /**
@@ -210,19 +253,19 @@ trait CachableUser
      *
      * @return array
      */
-    protected function bookmarkedCategories($id = 0)
+    protected function bookmarkedChannels($id = 0)
     {
         if ($id === 0) {
             $id = Auth::id();
         }
 
-        if ($value = Redis::hget('user.'.$id.'.data', 'bookmarkedCategories')) {
+        if ($value = Redis::hget('user.'.$id.'.data', 'bookmarkedChannels')) {
             return json_decode($value);
         }
 
         $result = $this->cacheUserData($id);
 
-        return json_decode($result['bookmarkedCategories']);
+        return json_decode($result['bookmarkedChannels']);
     }
 
     /**
@@ -310,22 +353,22 @@ trait CachableUser
      *
      * @return void
      */
-    protected function updateBookmarkedCategories($id, $bookmarkable_id, $attach = true)
+    protected function updateBookmarkedChannels($id, $bookmarkable_id, $attach = true)
     {
-        $bookmarkedCategories = $this->bookmarkedCategories($id);
+        $bookmarkedChannels = $this->bookmarkedChannels($id);
 
         if ($attach === true) {
-            array_push($bookmarkedCategories, $bookmarkable_id);
+            array_push($bookmarkedChannels, $bookmarkable_id);
         } else {
-            $bookmarkedCategories = array_values(array_diff($bookmarkedCategories, [$bookmarkable_id]));
+            $bookmarkedChannels = array_values(array_diff($bookmarkedChannels, [$bookmarkable_id]));
         }
 
         // we need to make sure the cached data exists
-        if (!Redis::hget('user.'.$id.'.data', 'bookmarkedCategories')) {
+        if (!Redis::hget('user.'.$id.'.data', 'bookmarkedChannels')) {
             $this->cacheUserData($id);
         }
 
-        Redis::hset('user.'.$id.'.data', 'bookmarkedCategories', json_encode($bookmarkedCategories));
+        Redis::hset('user.'.$id.'.data', 'bookmarkedChannels', json_encode($bookmarkedChannels));
     }
 
     /**
@@ -375,21 +418,21 @@ trait CachableUser
     }
 
     /**
-     * updates the hiddenSubmissions records of the auth user.
+     * Updates the subscriptions records of the auth user.
      *
      * @param int $id
-     * @param int $category_id
+     * @param int $channel_id
      *
      * @return void
      */
-    protected function updateSubscriptions($id, $category_id, $newSubscribe = true)
+    protected function updateSubscriptions($id, $channel_id, $newSubscribe = true)
     {
         $subscriptions = $this->subscriptions($id);
 
         if ($newSubscribe === true) {
-            array_push($subscriptions, $category_id);
+            array_push($subscriptions, $channel_id);
         } else {
-            $subscriptions = array_values(array_diff($subscriptions, [$category_id]));
+            $subscriptions = array_values(array_diff($subscriptions, [$channel_id]));
         }
 
         // we need to make sure the cached data exists
@@ -589,62 +632,62 @@ trait CachableUser
     }
 
     /**
-     * updates the submission_karma of the author user.
+     * updates the submission_xp of the author user.
      *
      * @param int $id
      * @param int $number
      *
      * @return void
      */
-    protected function updateSubmissionKarma($id, $number)
+    protected function updateSubmissionXp($id, $number)
     {
         // we need to make sure the cached data exists
-        if (!Redis::hget('user.'.$id.'.data', 'submissionKarma')) {
+        if (!Redis::hget('user.'.$id.'.data', 'submissionXp')) {
             $this->cacheUserData($id);
         }
 
-        $newKarma = Redis::hincrby('user.'.$id.'.data', 'submissionKarma', $number);
+        $newXp = Redis::hincrby('user.'.$id.'.data', 'submissionXp', $number);
 
         // for newbie users we update on each new vote
-        if ($newKarma < 100) {
-            DB::table('users')->where('id', $id)->update(['submission_karma' => $newKarma]);
+        if ($newXp < 100) {
+            DB::table('users')->where('id', $id)->update(['submission_xp' => $newXp]);
 
             return;
         }
 
         // but for major ones, we do this once a 50 times
-        if (($newKarma % 20) === 0) {
-            DB::table('users')->where('id', $id)->update(['submission_karma' => $newKarma]);
+        if (($newXp % 20) === 0) {
+            DB::table('users')->where('id', $id)->update(['submission_xp' => $newXp]);
         }
     }
 
     /**
-     * updates the comment_karma of the author user.
+     * updates the comment_xp of the author user.
      *
      * @param int $id
      * @param int $number
      *
      * @return void
      */
-    protected function updateCommentKarma($id, $number)
+    protected function updateCommentXp($id, $number)
     {
         // we need to make sure the cached data exists
-        if (!Redis::hget('user.'.$id.'.data', 'commentKarma')) {
+        if (!Redis::hget('user.'.$id.'.data', 'commentXp')) {
             $this->cacheUserData($id);
         }
 
-        $newKarma = Redis::hincrby('user.'.$id.'.data', 'commentKarma', $number);
+        $newXp = Redis::hincrby('user.'.$id.'.data', 'commentXp', $number);
 
         // for newbie users we update on each new vote
-        if ($newKarma < 100) {
-            DB::table('users')->where('id', $id)->update(['comment_karma' => $newKarma]);
+        if ($newXp < 100) {
+            DB::table('users')->where('id', $id)->update(['comment_xp' => $newXp]);
 
             return;
         }
 
         // but for major ones, we do this once a 20 times
-        if (($newKarma % 20) === 0) {
-            DB::table('users')->where('id', $id)->update(['comment_karma' => $newKarma]);
+        if (($newXp % 20) === 0) {
+            DB::table('users')->where('id', $id)->update(['comment_xp' => $newXp]);
         }
     }
 }

@@ -18,8 +18,12 @@ trait Permissions
      */
     protected function mustBeVotenAdministrator($user_id = 0)
     {
+        if (!Auth::check()) {
+            return false;
+        }
+
         if ($user_id === 0) {
-            $user_id = Auth::user()->id;
+            $user_id = Auth::id();
         }
 
         $users = $this->getVotenAdministrators();
@@ -36,49 +40,49 @@ trait Permissions
     {
         $users = $this->getWhitelistedUsers();
 
-        return $users->contains(Auth::user()->id);
+        return $users->contains(Auth::id()) || $this->mustBeVotenAdministrator();
     }
 
     /**
-     * Is Auth user the administrator of a category.
+     * Is Auth user the administrator of a channel.
      *
-     * @param int $category
+     * @param int $channel
      *
      * @return bool
      */
-    protected function mustBeAdministrator($category, $exclude = false)
+    protected function mustBeAdministrator($channel, $exclude = false)
     {
         if ($exclude) {
-            return Auth::user()->roles()->where('category_id', $category)->pluck('role')->contains('administrator');
+            return Auth::user()->roles()->where('channel_id', $channel)->pluck('role')->contains('administrator');
         }
 
-        return $this->mustBeVotenAdministrator() || Auth::user()->roles()->where('category_id', $category)->pluck('role')->contains('administrator');
+        return $this->mustBeVotenAdministrator() || Auth::user()->roles()->where('channel_id', $channel)->pluck('role')->contains('administrator');
     }
 
     /**
-     * Is Auth user the (at least ) moderator of category.
+     * Is Auth user the (at least ) moderator of channel.
      *
-     * @param int $category
+     * @param int $channel
      *
      * @return bool
      */
-    protected function mustBeModerator($category)
+    protected function mustBeModerator($channel)
     {
-        $roles = Auth::user()->roles()->where('category_id', $category)->pluck('role');
+        $roles = Auth::user()->roles()->where('channel_id', $channel)->pluck('role');
 
         return $this->mustBeVotenAdministrator() || $roles->contains('moderator') || $roles->contains('administrator');
     }
 
     /**
-     * Is Auth user the (at least ) subscriber of category.
+     * Is Auth user the (at least ) subscriber of channel.
      *
-     * @param int $category
+     * @param int $channel
      *
      * @return bool
      */
-    protected function mustBeSubscriber($category)
+    protected function mustBeSubscriber($channel)
     {
-        $roles = Auth::user()->roles()->where('category_id', $category)->pluck('role');
+        $roles = Auth::user()->roles()->where('channel_id', $channel)->pluck('role');
 
         return $roles->contains('subscriber') || $roles->contains('moderator') || $roles->contains('administrator');
     }
@@ -115,34 +119,34 @@ trait Permissions
     }
 
     /**
-     * Is the domain of the submitted $url blocked in $category or everwhere(specified
+     * Is the domain of the submitted $url blocked in $channel or everwhere(specified
      * by voten-administrators).
      *
      * @param string $url
-     * @param string $category
+     * @param string $channel
      *
      * @return bool
      */
-    protected function isDomainBlocked($url, $category)
+    protected function isDomainBlocked($url, $channel)
     {
         return BlockedDomain::where([
             ['domain', domain($url)],
-            ['category', 'all'],
+            ['channel', 'all'],
         ])->orWhere([
             ['domain', domain($url)],
-            ['category', $category],
+            ['channel', $channel],
         ])->exists();
     }
 
     /**
-     * Whether or not the Auth user is banned from submitting to this category.
+     * Whether or not the Auth user is banned from submitting to this channel.
      *
-     * @param string $category
+     * @param string $channel
      * @param int    $user_id
      *
      * @return bool
      */
-    protected function isUserBanned($user_id, $category)
+    protected function isUserBannedFromChannel($user_id, $channel)
     {
         if ($user_id === 0) {
             $user_id = Auth::user()->id;
@@ -150,27 +154,27 @@ trait Permissions
 
         return Ban::where([
             ['user_id', $user_id],
-            ['category', $category],
+            ['channel', $channel],
             ['unban_at', '>=', Carbon::now()],
         ])->orWhere([
             ['user_id', $user_id],
-            ['category', 'all'],
+            ['channel', 'all'],
             ['unban_at', '>=', Carbon::now()],
         ])->exists();
     }
 
     /**
-     * Does the auth user have the required minimum karma points?
+     * Does the auth user have the required minimum xp points?
      *
      * @param int $number
      *
      * @return bool
      */
-    protected function mustHaveMinimumKarma($number)
+    protected function mustHaveMinimumXp($number)
     {
         $stats = $this->userStats(Auth::id());
 
-        return ($stats['submission_karma'] + $stats['comment_karma']) >= $number;
+        return ($stats['submission_xp'] + $stats['comment_xp']) >= $number;
     }
 
     /* --------------------------------------------------------------------- */

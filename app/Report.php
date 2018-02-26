@@ -23,10 +23,10 @@ class Report extends Model
      * @var array
      */
     protected $fillable = [
-        'subject', 'reportable_type', 'reportable_id', 'user_id', 'category_id', 'description',
+        'subject', 'reportable_type', 'reportable_id', 'user_id', 'channel_id', 'description',
     ];
 
-    protected $events = [
+    protected $dispatchesEvents = [
         'created' => ReportWasCreated::class,
     ];
 

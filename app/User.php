@@ -3,11 +3,13 @@
 namespace App;
 
 use App\Traits\CachableUser;
+use Auth;
 use Carbon\Carbon;
 use DB;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Laravel\Passport\HasApiTokens;
 use Laravel\Scout\Searchable;
@@ -24,12 +26,13 @@ class User extends Authenticatable
     protected $fillable = [
         'username', 'name', 'email', 'password', 'location', 'bio',
         'website', 'settings', 'color', 'avatar', 'confirmed',
-        'active', 'info', 'comment_karma', 'submission_karma',
+        'active', 'info', 'comment_xp', 'submission_xp',
     ];
 
     protected $casts = [
-        'settings' => 'json',
-        'info'     => 'json',
+        'settings'  => 'json',
+        'info'      => 'json',
+        'confirmed' => 'boolean',
     ];
 
     /**
@@ -61,9 +64,24 @@ class User extends Authenticatable
         return $this->hasMany(Submission::class);
     }
 
+    /**
+     * Blocked submissions.
+     *
+     * @return Collection
+     */
     public function hiddenSubmissions()
     {
         return DB::table('hides')->where('user_id', $this->id)->get()->pluck('submission_id');
+    }
+
+    /**
+     * Blocked channels (all except these).
+     *
+     * @return Collection
+     */
+    public function hiddenChannels()
+    {
+        return DB::table('hidden_channels')->where('user_id', $this->id)->get()->pluck('channel_id');
     }
 
     public function seenAnnouncements()
@@ -81,26 +99,26 @@ class User extends Authenticatable
         return $this->belongsToMany(self::class, 'hidden_users', 'user_id', 'blocked_user_id');
     }
 
-    public function categoryRoles()
+    public function channelRoles()
     {
-        return $this->belongsToMany(Category::class, 'roles');
+        return $this->belongsToMany(Channel::class, 'roles');
     }
 
     public function roles()
     {
-        return DB::table('roles')->where('user_id', $this->id)->select('role', 'category_id')->get();
+        return DB::table('roles')->where('user_id', $this->id)->select('role', 'channel_id')->get();
     }
 
     public function moderatingIds()
     {
-        return DB::table('roles')->where('user_id', $this->id)->select('category_id')->get()->pluck('category_id');
+        return DB::table('roles')->where('user_id', $this->id)->select('channel_id')->get()->pluck('channel_id');
     }
 
     public function subscriptions()
     {
-        return $this->belongsToMany(Category::class, 'subscriptions')
-                    ->withTimestamps()
-                    ->orderBy('subscriptions.created_at', 'desc');
+        return $this->belongsToMany(Channel::class, 'subscriptions')
+            ->withTimestamps()
+            ->orderBy('subscriptions.created_at', 'desc');
     }
 
     /* --------------------------------------------------------------------- */
@@ -109,21 +127,21 @@ class User extends Authenticatable
 
     public function feedHot()
     {
-        return $this->belongsToMany(Category::class, 'subscriptions')->with(['submissions' => function ($query) {
+        return $this->belongsToMany(Channel::class, 'subscriptions')->with(['submissions' => function ($query) {
             $query->orderBy('rate', 'desc');
         }]);
     }
 
     public function feedNew()
     {
-        return $this->belongsToMany(Category::class, 'subscriptions')->with(['submissions' => function ($query) {
+        return $this->belongsToMany(Channel::class, 'subscriptions')->with(['submissions' => function ($query) {
             $query->orderBy('created_at', 'desc');
         }]);
     }
 
     public function feedRising()
     {
-        return $this->belongsToMany(Category::class, 'subscriptions')->with(['submissions' => function ($query) {
+        return $this->belongsToMany(Channel::class, 'subscriptions')->with(['submissions' => function ($query) {
             $query->orderBy('created_at', 'desc');
             $query->where('created_at', '>=', Carbon::now()->subHour());
         }]);
@@ -136,8 +154,8 @@ class User extends Authenticatable
     public function submissionUpvotes()
     {
         return $this->belongsToMany(Submission::class, 'submission_upvotes')
-                    ->withTimestamps()
-                    ->orderBy('submission_upvotes.created_at', 'desc');
+            ->withTimestamps()
+            ->orderBy('submission_upvotes.created_at', 'desc');
     }
 
     public function submissionUpvotesIds()
@@ -148,8 +166,8 @@ class User extends Authenticatable
     public function submissionDownvotes()
     {
         return $this->belongsToMany(Submission::class, 'submission_downvotes')
-                    ->withTimestamps()
-                    ->orderBy('submission_downvotes.created_at', 'desc');
+            ->withTimestamps()
+            ->orderBy('submission_downvotes.created_at', 'desc');
     }
 
     public function submissionDownvotesIds()
@@ -164,8 +182,8 @@ class User extends Authenticatable
     public function commentUpvotes()
     {
         return $this->belongsToMany(Comment::class, 'comment_upvotes')
-                    ->withTimestamps()
-                    ->orderBy('comment_upvotes.created_at', 'desc');
+            ->withTimestamps()
+            ->orderBy('comment_upvotes.created_at', 'desc');
     }
 
     public function commentUpvotesIds()
@@ -176,8 +194,8 @@ class User extends Authenticatable
     public function commentDownvotes()
     {
         return $this->belongsToMany(Comment::class, 'comment_downvotes')
-                    ->withTimestamps()
-                    ->orderBy('comment_downvotes.created_at', 'desc');
+            ->withTimestamps()
+            ->orderBy('comment_downvotes.created_at', 'desc');
     }
 
     public function commentDownvotesIds()
@@ -197,15 +215,15 @@ class User extends Authenticatable
     public function conversations()
     {
         return $this->belongsToMany(Message::class, 'conversations')
-                    ->withTimestamps()
-                    ->orderBy('conversations.created_at', 'desc');
+            ->withTimestamps()
+            ->orderBy('conversations.created_at', 'desc');
     }
 
     public function contacts()
     {
         return $this->hasMany(Conversation::class)
-                    ->groupBy('contact_id')
-                    ->select(DB::raw('*, max(id) as id, max(message_id) as message_id, max(created_at) as created_at'));
+            ->groupBy('contact_id')
+            ->select(DB::raw('*, max(id) as id, max(message_id) as message_id, max(created_at) as created_at'));
     }
 
     public function myContactIds()
@@ -225,33 +243,33 @@ class User extends Authenticatable
     public function bookmarkedSubmissions()
     {
         return $this->belongsToMany(Submission::class, 'bookmarks', 'user_id', 'bookmarkable_id')
-                        ->where('bookmarkable_type', 'App\Submission')
-                        ->withTimestamps()
-                        ->orderBy('bookmarks.created_at', 'desc');
+            ->where('bookmarkable_type', 'App\Submission')
+            ->withTimestamps()
+            ->orderBy('bookmarks.created_at', 'desc');
     }
 
     public function bookmarkedComments()
     {
         return $this->belongsToMany('App\Comment', 'bookmarks', 'user_id', 'bookmarkable_id')
-                    ->where('bookmarkable_type', 'App\Comment')
-                    ->withTimestamps()
-                    ->orderBy('bookmarks.created_at', 'desc');
+            ->where('bookmarkable_type', 'App\Comment')
+            ->withTimestamps()
+            ->orderBy('bookmarks.created_at', 'desc');
     }
 
-    public function bookmarkedCategories()
+    public function bookmarkedChannels()
     {
-        return $this->belongsToMany('App\Category', 'bookmarks', 'user_id', 'bookmarkable_id')
-                    ->where('bookmarkable_type', 'App\Category')
-                    ->withTimestamps()
-                    ->orderBy('bookmarks.created_at', 'desc');
+        return $this->belongsToMany('App\Channel', 'bookmarks', 'user_id', 'bookmarkable_id')
+            ->where('bookmarkable_type', 'App\Channel')
+            ->withTimestamps()
+            ->orderBy('bookmarks.created_at', 'desc');
     }
 
     public function bookmarkedUsers()
     {
         return $this->belongsToMany('App\User', 'bookmarks', 'user_id', 'bookmarkable_id')
-                    ->where('bookmarkable_type', 'App\User')
-                    ->withTimestamps()
-                    ->orderBy('bookmarks.created_at', 'desc');
+            ->where('bookmarkable_type', 'App\User')
+            ->withTimestamps()
+            ->orderBy('bookmarks.created_at', 'desc');
     }
 
     /**
@@ -340,6 +358,16 @@ class User extends Authenticatable
         return new \App\Settings($this->settings, $this);
     }
 
+    public function clientsideSettings($platform = 'Web')
+    {
+        $settings = \App\ClientsideSettings::where([
+            ['user_id', $this->id],
+            ['platform', $platform],
+        ])->first();
+
+        return optional($settings)->json;
+    }
+
     /**
      * Is the auth user shadow banned.
      *
@@ -348,5 +376,22 @@ class User extends Authenticatable
     public function isShadowBanned()
     {
         return !$this->active;
+    }
+
+    public function isSelf()
+    {
+        if (!Auth::check()) {
+            return false;
+        }
+
+        return $this->id === Auth::id();
+    }
+
+    /**
+     * Rewrite for Passport's findForPassport() to allow for login via both "username" and "email".
+     */
+    public function findForPassport($identifier)
+    {
+        return $this->orWhere('email', $identifier)->orWhere('username', $identifier)->first();
     }
 }

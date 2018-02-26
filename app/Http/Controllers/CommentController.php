@@ -7,7 +7,8 @@ use App\Comment;
 use App\Events\CommentWasCreated;
 use App\Events\CommentWasDeleted;
 use App\Events\CommentWasPatched;
-use App\Traits\CachableCategory;
+use App\Http\Resources\CommentResource;
+use App\Traits\CachableChannel;
 use App\Traits\CachableComment;
 use App\Traits\CachableSubmission;
 use App\Traits\CachableUser;
@@ -17,7 +18,7 @@ use Illuminate\Http\Request;
 
 class CommentController extends Controller
 {
-    use CachableSubmission, CachableUser, CachableComment, CachableCategory;
+    use CachableSubmission, CachableUser, CachableComment, CachableChannel;
 
     public function __construct()
     {
@@ -34,25 +35,25 @@ class CommentController extends Controller
     public function store(Request $request)
     {
         $this->validate($request, [
-            'body'          => 'required',
-            'parent_id'     => 'required|integer',
-            'submission_id' => 'required|integer',
+            'body'          => 'required|string|max:5000',
+            'parent_id'     => 'nullable|integer',
+            'submission_id' => 'required|integer|exists:submissions,id',
         ]);
 
         if ($this->tooEarlyToCreate(3)) {
-            return response("Looks like you're over doing it. You can't submit more than one comments per minute.", 500);
+            return res(429, "Looks like you're over doing it. You can't submit more than 3 comments per minute");
         }
 
         $submission = $this->getSubmissionById($request->submission_id);
         $author = Auth::user();
-        $parentComment = ($request->parent_id > 0) ? $this->getCommentById($request->parent_id) : null;
+        $parentComment = (!is_null($request->parent_id) && $request->parent_id > 0) ? $this->getCommentById($request->parent_id) : null;
 
         $comment = Comment::create([
             'body'          => $request->body,
             'user_id'       => $author->id,
-            'category_id'   => $submission->category_id,
+            'channel_id'    => $submission->channel_id,
             'parent_id'     => $request->parent_id,
-            'level'         => $request->parent_id == 0 ? 0 : ($parentComment->level + 1),
+            'level'         => $request->parent_id == null ? 0 : ($parentComment->level + 1),
             'submission_id' => $submission->id,
             'rate'          => firstRate(),
             'upvotes'       => 1,
@@ -64,11 +65,10 @@ class CommentController extends Controller
 
         $this->firstVote($author, $comment->id);
 
-        // set proper relation values:
+        // save a query by setting the author:
         $comment->owner = $author;
-        $comment->children = [];
 
-        return $comment;
+        return new CommentResource($comment);
     }
 
     /**
@@ -78,27 +78,29 @@ class CommentController extends Controller
      *
      * @return mixed
      */
-    public function index(Request $request)
+    public function index(Request $request, $submission_id)
     {
         $this->validate($request, [
-            'submission_slug' => 'required',
-            'sort'            => 'required',
+            'sort'          => 'nullable|in:hot,new',
+            'page'          => 'integer|min:1'
         ]);
 
-        $submission = $this->getSubmissionBySlug($request->submission_slug);
-
         if ($request->sort == 'new') {
-            return $submission->comments()
-                        ->where('parent_id', 0)
-                        ->orderBy('created_at', 'desc')
-                        ->simplePaginate(20);
+            return CommentResource::collection(
+                Comment::where([
+                    ['submission_id', $submission_id],
+                    ['parent_id', 0],
+                ])->orderBy('created_at', 'desc')->simplePaginate(20)
+            );
         }
 
         // Sort by default which is 'hot'
-        return $submission->comments()
-                        ->where('parent_id', 0)
-                        ->orderBy('rate', 'desc')
-                        ->simplePaginate(20);
+        return CommentResource::collection(
+            Comment::where([
+                ['submission_id', $submission_id],
+                ['parent_id', 0],
+            ])->orderBy('rate', 'desc')->simplePaginate(20)
+        );
     }
 
     /**
@@ -128,30 +130,29 @@ class CommentController extends Controller
      *
      * @return \Symfony\Component\HttpFoundation\Response
      */
-    public function patch(Request $request)
+    public function patch($comment_id)
     {
-        $this->validate($request, [
-            'comment_id' => 'required|integer',
-            'body'       => 'required',
+        $this->validate(request(), [
+            'body' => 'required|string|max:5000',
         ]);
 
-        $comment = Comment::findOrFail($request->comment_id);
+        $comment = $this->getCommentById($comment_id);
 
         abort_unless($this->mustBeOwner($comment), 403);
 
         // make sure the body has changed
-        if ($request->body == $comment->body) {
-            return response('Comment has not been really edited.', 422);
+        if (request('body') == $comment->body) {
+            return res(200, 'The body is the same as it was before!.');
         }
 
         $comment->update([
-            'body'      => $request->body,
+            'body'      => request('body'),
             'edited_at' => Carbon::now(),
         ]);
 
         event(new CommentWasPatched($comment, $comment->submission));
 
-        return response('comment edited successfully', 200);
+        return res(200, 'Comment edited successfully');
     }
 
     /**
@@ -161,21 +162,19 @@ class CommentController extends Controller
      *
      * @return response
      */
-    public function destroy(Request $request)
+    public function destroy($comment_id)
     {
-        $this->validate($request, [
-            'id' => 'required|integer',
-        ]);
+        $comment = $this->getCommentById($comment_id);
 
-        $comment = $this->getCommentById($request->id);
-        $submission = $this->getSubmissionById($comment->submission_id);
         abort_unless($this->mustBeOwner($comment), 403);
 
-        event(new CommentWasDeleted($comment, $submission));
+        $submission = $this->getSubmissionById($comment->submission_id);
+
+        event(new CommentWasDeleted($comment, $submission, true));
 
         $comment->forceDelete();
 
-        return response('Successfully deleted', 200);
+        return res(200, 'Comment deleted successfully.');
     }
 
     /**
@@ -187,18 +186,18 @@ class CommentController extends Controller
      */
     protected function tooEarlyToCreate($limit_number)
     {
-        // exclude white-listed users form this checking
+        // white-listed users are fine
         if ($this->mustBeWhitelisted()) {
             return false;
         }
 
-        $comments_count = Activity::where([
+        $posted_comments_count = Activity::where([
             ['subject_type', 'App\Comment'],
             ['user_id', Auth::user()->id],
             ['name', 'created_comment'],
             ['created_at', '>=', Carbon::now()->subMinute()],
         ])->get()->count();
 
-        return $comments_count >= $limit_number ? true : false;
+        return $posted_comments_count >= $limit_number ? true : false;
     }
 }

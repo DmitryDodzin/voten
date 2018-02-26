@@ -2,41 +2,35 @@
     <section class="banned-user-wrapper">
         <div class="banned-user">
             <div class="left">
-                <markdown :text="list.title"></markdown>
+                <markdown :text="list.body"></markdown>
             </div>
 
             <div class="actions">
-                <i class="pointer v-icon go-gray v-edit h-primary" @click="$emit('edit-rule', list)"
-                    data-toggle="tooltip" data-placement="top" title="Edit"></i>
+                <el-tooltip content="Edit" placement="top" transition="false" :open-delay="500">
+                    <i class="pointer v-icon go-gray v-edit h-primary" @click="$emit('edit-rule', list)"></i>
+                </el-tooltip>
 
-                <i class="pointer v-icon go-gray v-delete h-red" @click="$emit('delete-rule', list.id, list.category_id)"
-                    data-toggle="tooltip" data-placement="top" title="Delete"></i>
+                <el-tooltip content="Delete" placement="top" transition="false" :open-delay="500">
+                    <i class="pointer v-icon go-gray v-delete h-red"
+                       @click="$emit('delete-rule', list.id, list.channel_id)"></i>
+                </el-tooltip>
             </div>
         </div>
     </section>
 </template>
 
 <script>
-    import Markdown from '../components/Markdown.vue'
+import Markdown from '../components/Markdown.vue';
 
-    export default {
-        components: { Markdown },
+export default {
+    components: { Markdown },
 
+    data() {
+        return {
+            showDescription: false
+        };
+    },
 
-        mixins: [],
-
-        data: function () {
-            return {
-                showDescription: false
-            }
-        },
-
-        props: ['list'],
-
-        mounted: function() {
-            this.$nextTick(function() {
-                this.$root.loadSemanticTooltip()
-            })
-        },
-    };
+    props: ['list']
+};
 </script>

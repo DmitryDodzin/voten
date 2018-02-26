@@ -5,10 +5,11 @@
 | Voten Helpers
 |--------------------------------------------------------------------------
 |
-| This file contains our general helper functions that can be accessed everywhere.
-| Hope you have fun with it and also don't over do it!
+| This file contains our general helper functions that can be accessed from
+| everywhere in the application code. If you find this as "bad practice",
+| don't read this file then!
 |
-*/
+ */
 
 if (!function_exists('getRequestIpAddress')) {
     /**
@@ -22,9 +23,33 @@ if (!function_exists('getRequestIpAddress')) {
     }
 }
 
+if (!function_exists('getRequestUserAgent')) {
+    /**
+     * Returns the user_agent of the request even if the website is using Cloudflare.
+     *
+     * @return string
+     */
+    function getRequestUserAgent()
+    {
+        return $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
+    }
+}
+
+if (!function_exists('getRequestCountry')) {
+    /**
+     * Returns the country that the request has been sent from even if the website is using Cloudflare.
+     *
+     * @return string
+     */
+    function getRequestCountry()
+    {
+        return $_SERVER['HTTP_CF_IPCOUNTRY'] ?? 'unknown';
+    }
+}
+
 if (!function_exists('firstRate')) {
     /**
-     * Calculates the rate for votable model (currently submissions and comments).
+     * Calculates the rate for votable model (currently used for submissions and comments).
      *
      * @return float
      */
@@ -92,11 +117,11 @@ if (!function_exists('settings')) {
 
 if (!function_exists('domain')) {
     /**
-     * makes it easy for interacting with user's settings (that is implemented as json).
+     * Squeezes the domain address from a valid URL.
      *
-     * @param string $key
+     * @param string $url
      *
-     * @return mixed
+     * @return string
      */
     function domain($url)
     {
@@ -106,7 +131,7 @@ if (!function_exists('domain')) {
 
 if (!function_exists('isValidUrl')) {
     /**
-     * makes it easy for interacting with user's settings (that is implemented as json).
+     * Validates $url.
      *
      * @param string $key
      *
@@ -120,9 +145,7 @@ if (!function_exists('isValidUrl')) {
 
 if (!function_exists('isMobileDevice')) {
     /**
-     * makes it easy for interacting with user's settings (that is implemented as json).
-     *
-     * @param string $key
+     * Is visitor viewing site on a mobile device?
      *
      * @return bool
      */
@@ -150,11 +173,11 @@ if (!function_exists('confirmPassword')) {
 
 if (!function_exists('externalJson')) {
     /**
-     * Used for "Enter your password to confirm cases".
+     * Convert external JSON into an object.
      *
      * @param string $url
      *
-     * @return obj|bool
+     * @return obj
      */
     function externalJson($url)
     {
@@ -168,7 +191,7 @@ if (!function_exists('externalJson')) {
 
 if (!function_exists('rssForHumans')) {
     /**
-     * Used for "Enter your password to confirm cases".
+     * Converts a RSS formatted number into a humen-friendly string. (used for backend dashboard's statistics).
      *
      * @param int $bytes
      *
@@ -183,11 +206,11 @@ if (!function_exists('rssForHumans')) {
         if ($bytes < $Ki) {
             return $bytes.' B';
         } elseif ($bytes < $Mi) {
-            return round($bytes / $Ki, 3).' KiB';
+            return round($bytes / $Ki, 3);
         } elseif ($bytes < $Gi) {
-            return round($bytes / $Mi, 3).' MiB';
+            return round($bytes / $Mi, 3);
         } else {
-            return round($bytes / $Gi, 3).' GiB';
+            return round($bytes / $Gi, 3);
         }
     }
 }
@@ -203,5 +226,141 @@ if (!function_exists('iso8601')) {
     function iso8601($time)
     {
         return gmdate('c', strtotime($time));
+    }
+}
+
+if (!function_exists('activeClass')) {
+    /**
+     * returns active-class if the current URI is the same as sent URI.
+     *
+     * @param $uri
+     * @param string $active_class
+     *
+     * @return string
+     */
+    function activeClass($uri, $active_class = 'is-active')
+    {
+        if (!starts_with($uri, '/')) {
+            $uri = '/'.$uri;
+        }
+
+        $current_uri = str_after(url()->current(), config('app.url'));
+
+        if (starts_with($current_uri, $uri)) {
+            return ' '.$active_class;
+        }
+    }
+}
+
+/*
+ * Returns a response json formatted for Voten's public API. Note that all errors have the same format;
+ * making it easy for fornt-end developers writing code on top of Voten's API. Happy API coding!
+ *
+ * @param integer $status
+ * @param string $description
+ *
+ * @return response()
+ */
+if (!function_exists('res')) {
+    function res($status = 200, $description = null)
+    {
+        switch ($status) {
+            case 200:
+                if (is_null($description)) {
+                    $description = 'The request has succeeded.';
+                }
+                break;
+
+            case 201:
+                if (is_null($description)) {
+                    $description = 'The request has been fulfilled and has resulted in one or more new resources being created.';
+                }
+                break;
+
+            case 400:
+                $message = 'Bad request.';
+                if (is_null($description)) {
+                    $description = 'The server cannot or will not process the request due to something that is perceived to be a client error';
+                }
+                break;
+
+            case 401:
+                $message = 'Unauthenticated.';
+                if (is_null($description)) {
+                    $description = 'The request has not been applied because it lacks valid authentication credentials for the target resource.';
+                }
+                break;
+
+            case 404:
+                $message = 'Not found.';
+                if (is_null($description)) {
+                    $description = 'The origin server did not find a current representation for the target resource. Check your route, and if it is correct and you still get this error, it means the there is no such record in our database.';
+                }
+                break;
+
+            case 405:
+                $message = 'Method not allowed.';
+                if (is_null($description)) {
+                    $description = 'The method received in the request-line is known by the origin server but not supported by the target resource. Try re-checking our documentation for the supported method.';
+                }
+                break;
+
+            case 403:
+                $message = 'Forbidden.';
+                if (is_null($description)) {
+                    $description = 'You do not have required permissions to access this address.';
+                }
+                break;
+
+            case 422:
+                $message = 'Unprocessable entity.';
+                if (is_null($description)) {
+                    $description = 'The server understands the content type of the request entity, but was unable to process the contained instructions.';
+                }
+                break;
+
+            case 423:
+                $message = 'Locked.';
+                if (is_null($description)) {
+                    $description = 'The source or destination resource of a method is locked.';
+                }
+                break;
+
+            case 429:
+                $message = 'Too many requests.';
+                if (is_null($description)) {
+                    $description = 'The user has sent too many requests in a given amount of time.';
+                }
+                break;
+
+            case 500:
+                $message = 'Server error.';
+                if (is_null($description)) {
+                    $description = 'The server encountered an unexpected condition that prevented it from fulfilling the request.';
+                }
+                break;
+
+            case 503:
+                $message = 'Service unavailable.';
+                if (is_null($description)) {
+                    $description = 'The service is temporarily down due to maintenance. We will be back soon.';
+                }
+                break;
+        }
+
+        // success
+        if ($status === 200 || $status === 201) {
+            return response([
+                'message' => $description,
+            ], $status);
+        }
+
+        // error
+        return response([
+            'message' => $message,
+            'errors'  => [
+                'more_info' => $description,
+            ],
+        ], $status);
     }
 }

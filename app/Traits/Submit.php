@@ -2,13 +2,13 @@
 
 namespace App\Traits;
 
+use App\Gif;
 use App\Photo;
 use App\Submission;
 use DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Storage;
-use Pbmedia\LaravelFFMpeg\FFMpegFacade as FFMpeg;
+use Illuminate\Support\Facades\Auth;
 
 trait Submit
 {
@@ -47,15 +47,21 @@ trait Submit
      *
      * @return void
      */
-    protected function firstVote($user, $submission_id)
+    protected function firstVote($submission_id)
     {
-        $user->submissionUpvotes()->attach($submission_id, ['ip_address' => getRequestIpAddress()]);
+        $user = Auth::user();
 
-        $upvotes = $this->submissionUpvotesIds($user->id);
+        try {
+            $user->submissionUpvotes()->attach($submission_id, ['ip_address' => getRequestIpAddress()]);
 
-        array_push($upvotes, $submission_id);
+            $upvotes = $this->submissionUpvotesIds($user->id);
 
-        $this->updateSubmissionUpvotesIds($user->id, $upvotes);
+            array_push($upvotes, $submission_id);
+
+            $this->updateSubmissionUpvotesIds($user->id, $upvotes);
+        } catch (\Exception $exception) {
+            app('sentry')->captureException($exception);
+        }
     }
 
     /**
@@ -65,102 +71,72 @@ trait Submit
      */
     protected function linkSubmission(Request $request)
     {
-        $apiURL = 'https://midd.voten.co/link-submission?url='.urlencode($request->url);
+        try {
+            $apiURL = 'https://midd.voten.co/link-submission?url='.urlencode($request->url);
 
-        $info = json_decode(file_get_contents($apiURL));
+            $info = json_decode(file_get_contents($apiURL));
 
-        return [
-            'url'           => $info->url,
-            'title'         => $info->title,
-            'description'   => $info->description,
-            'type'          => $info->type,
-            'embed'         => $info->embed,
-            'img'           => $info->img,
-            'thumbnail'     => $info->thumbnail,
-            'providerName'  => $info->providerName,
-            'publishedTime' => $info->publishedTime,
-            'domain'        => $info->domain,
-        ];
+            return [
+                'url'           => $info->url,
+                'title'         => $info->title,
+                'description'   => $info->description,
+                'type'          => $info->type,
+                'embed'         => $info->embed,
+                'img'           => $info->img,
+                'thumbnail'     => $info->thumbnail,
+                'providerName'  => $info->providerName,
+                'publishedTime' => $info->publishedTime,
+                'domain'        => $info->domain,
+            ];
+        } catch (\Exception $e) {
+            return [
+                'url'           => $request->url,
+                'title'         => $request->title,
+                'description'   => null,
+                'type'          => 'link',
+                'embed'         => null,
+                'img'           => null,
+                'thumbnail'     => null,
+                'providerName'  => null,
+                'publishedTime' => null,
+                'domain'        => domain($request->url),
+            ];
+        }
     }
 
     /**
-     * @param Illuminate\Http\Request $request
+     * @param Request $request
      *
      * @return array
      */
     protected function imgSubmission(Request $request)
     {
-        $photo = Photo::where('id', $request->input('photos')[0])->firstOrFail();
+        $photo = Photo::where('id', $request->input('photos_id')[0])->firstOrFail();
 
         return [
             'path'           => $photo->path,
             'thumbnail_path' => $photo->thumbnail_path,
-            'album'          => (count($request->input('photos')) > 1),
+            'album'          => (count($request->input('photos_id')) > 1),
         ];
     }
 
     /**
-     * Animated gif submissions: The uploaded .gif file should get converted
-     * to .mp4 format to save bandwitch for both server and user. This way
-     * we get to use a pretty HTML5 player for playing .gif files.
-     *
-     * @param Illuminate\Http\Request $request
+     * @param Request $request
      *
      * @return array
      */
     protected function gifSubmission(Request $request)
     {
-        $this->validate($request, [
-            'gif' => 'required|mimes:gif|max:51200',
-        ]);
-
-        $file = $request->file('gif');
-
-        $filename = time().str_random(7);
-
-        $file->storeAs('submissions/gif', $filename.'.gif', 'local');
-
-        FFMpeg::fromDisk('local')
-                    ->open('submissions/gif/'.$filename.'.gif')
-                    // mp4
-                    ->export()
-                    ->toDisk('local')
-                    ->inFormat((new \FFMpeg\Format\Video\X264())->setAdditionalParameters([
-                        '-movflags', 'faststart',
-                        '-pix_fmt', 'yuv420p',
-                        '-preset', 'veryslow',
-                        '-b:v', '500k',
-                    ]))
-                    ->save('submissions/gif/'.$filename.'.mp4')
-                    // thumbnail
-                    ->getFrameFromSeconds(1)
-                    ->export()
-                    ->toDisk('local')
-                    ->save('submissions/gif/'.$filename.'.jpg');
-
-        // get the uploaded mp4 and move it to the ftp
-        $mp4 = Storage::disk('local')->get('submissions/gif/'.$filename.'.mp4');
-        Storage::disk('ftp')->put('submissions/gif/'.$filename.'.mp4', $mp4);
-
-        // get the uploaded jpg and move it to the ftp
-        $jpg = Storage::disk('local')->get('submissions/gif/'.$filename.'.jpg');
-        Storage::disk('ftp')->put('submissions/gif/'.$filename.'.jpg', $jpg);
-
-        // delete temp files from local storage
-        Storage::disk('local')->delete([
-            'submissions/gif/'.$filename.'.jpg',
-            'submissions/gif/'.$filename.'.gif',
-            'submissions/gif/'.$filename.'.mp4',
-        ]);
+        $gif = Gif::findOrFail($request->gif_id);
 
         return [
-            'mp4_path'       => $this->ftpAddress().'submissions/gif/'.$filename.'.mp4',
-            'thumbnail_path' => $this->ftpAddress().'submissions/gif/'.$filename.'.jpg',
+            'mp4_path'       => $gif->mp4_path,
+            'thumbnail_path' => $gif->thumbnail_path,
         ];
     }
 
     /**
-     * @param Illuminate\Http\Request $request
+     * @param Request $request $request
      *
      * @return array
      */
@@ -183,7 +159,7 @@ trait Submit
         try {
             $title = file_get_contents($apiURL);
         } catch (\Exception $exception) {
-            return response('Invalid URL', 500);
+            return res(400, 'Invalid URL');
         }
 
         return $title;
@@ -194,9 +170,9 @@ trait Submit
      *
      * @return bool
      */
-    protected function isDuplicateTitle($title, $category)
+    protected function isDuplicateTitle($title, $channel)
     {
-        return Submission::withTrashed()->where('title', $title)->where('category_name', $category)->exists();
+        return Submission::withTrashed()->where('title', $title)->where('channel_name', $channel)->exists();
     }
 
     /**

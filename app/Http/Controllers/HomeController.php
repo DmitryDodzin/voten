@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\SubmissionResource;
 use App\Submission;
-use App\Traits\CachableCategory;
+use App\Traits\CachableChannel;
 use App\Traits\CachableSubmission;
 use App\Traits\CachableUser;
 use Auth;
@@ -12,24 +13,22 @@ use Illuminate\Http\Request;
 
 class HomeController extends Controller
 {
-    use CachableUser, CachableSubmission, CachableCategory;
+    use CachableUser, CachableSubmission, CachableChannel;
 
     /**
-     * Displays the home page.
+     * Displays the home page.h.
      *
      * @param \Illuminate\Http\Request $request
      *
      * @return view
      */
-    public function homePage(Request $request)
+    public function homePage()
     {
-        if (!Auth::check()) {
-            $submissions = $this->guestHome($request);
+        $submissions = SubmissionResource::collection(
+            $this->guestHome(request())
+        );
 
-            return view('home', compact('submissions'));
-        }
-
-        return view('welcome');
+        return view('home', compact('submissions'));
     }
 
     /**
@@ -42,63 +41,109 @@ class HomeController extends Controller
     public function feed(Request $request)
     {
         $this->validate($request, [
-            'sort' => 'required|in:hot,new,rising',
-            'page' => 'required|integer',
+            'page' => 'required|integer|min:1',
         ]);
 
         if (!Auth::check()) {
-            return $this->guestHome($request);
+            return SubmissionResource::collection(
+                $this->guestHome($request)
+            );
         }
 
         $submissions = (new Submission())->newQuery();
 
-        // spicify the filter:
-        if ($request->filter == 'all-channels') {
-            // guest what? we don't have to do anything :|
-        } elseif ($request->filter == 'moderating-channels') {
-            $submissions->whereIn('category_id', Auth::user()->moderatingIds());
-        } elseif ($request->filter == 'bookmarked-channels') {
-            $submissions->whereIn('category_id', $this->bookmarkedCategories());
-        } elseif ($request->filter == 'by-bookmarked-users') {
-            $submissions->whereIn('user_id', $this->bookmarkedUsers());
-        } else { // $request->filter == "subscribed channels"
-            $submissions->whereIn('category_id', $this->subscriptions());
+        switch ($request->filter) {
+            case 'all':
+                // guest what? we don't have to do anything :|
+                break;
+
+            case 'moderating':
+                $submissions->whereIn('channel_id', Auth::user()->moderatingIds());
+                break;
+
+            case 'bookmarked':
+                $submissions->whereIn('channel_id', $this->bookmarkedChannels());
+                break;
+
+            case 'by-bookmarked-users':
+                $submissions->whereIn('user_id', $this->bookmarkedUsers());
+                break;
+
+            default: // subscribed
+                $submissions->whereIn('channel_id', $this->subscriptions());
+                break;
         }
+
+        switch ($request->type) {
+            case 'GIF':
+                $submissions->where('type', 'gif');
+                break;
+
+            case 'Link':
+                $submissions->where('type', 'link');
+                break;
+
+            case 'Image':
+                $submissions->where('type', 'img');
+                break;
+
+            case 'Text':
+                $submissions->where('type', 'text');
+                break;
+
+            default: // subscribed
+                // guest what? we don't have to do anything :|
+                break;
+        }
+
+        // exclude user's blocked channels
+        $submissions->whereNotIn('channel_id', $this->hiddenChannels());
 
         // exclude user's hidden submissions
         $submissions->whereNotIn('id', $this->hiddenSubmissions());
 
-        // exclude NSFW if user doens't want to see them
-        if (!settings('nsfw')) {
+        if ($request->include_nsfw_submissions == true) {
+            //
+        } else { // exclude it by default
             $submissions->where('nsfw', false);
         }
 
-        if (settings('exclude_upvoted_submissions')) {
+        if ($request->exclude_upvoted_submissions == true) {
             $submissions->whereNotIn('id', $this->submissionUpvotesIds());
         }
 
-        if (settings('exclude_downvoted_submissions')) {
+        if ($request->exclude_downvoted_submissions == true) {
             $submissions->whereNotIn('id', $this->submissionDownvotesIds());
         }
 
-        if ($request->sort == 'new') {
-            $submissions->orderBy('created_at', 'desc');
+        if ($request->exclude_bookmarked_submissions == true) {
+            $submissions->whereNotIn('id', $this->bookmarkedSubmissions());
         }
 
-        if ($request->sort == 'rising') {
-            $submissions->where('created_at', '>=', Carbon::now()->subHour())
-                        ->orderBy('rate', 'desc');
+        switch ($request->sort) {
+            case 'new':
+                $submissions->orderBy('created_at', 'desc');
+                break;
+
+            case 'rising':
+                $submissions->where('created_at', '>=', Carbon::now()->subHour())
+                    ->orderBy('rate', 'desc');
+                break;
+
+            default: // 'hot'
+                $submissions->orderBy('rate', 'desc');
+                break;
         }
 
-        if ($request->sort == 'hot') {
-            $submissions->orderBy('rate', 'desc');
-        }
+        $submissions->groupBy('url');
 
-        return $submissions->simplePaginate(10);
+        return SubmissionResource::collection(
+            $submissions->simplePaginate(15)
+        );
     }
 
     /**
-     * returns submisisons from default categories. by time we're gonna improve this.
+     * returns submisisons from default channels. by time we're gonna improve this.
      *
      * @param \Illuminate\Http\Request $request
      *
@@ -109,20 +154,27 @@ class HomeController extends Controller
         $submissions = (new Submission())->newQuery();
 
         $submissions->whereIn(
-            'category_id', $this->getDefaultCategories()
+            'channel_id', $this->getDefaultChannels()
         );
 
         $submissions->where('nsfw', false);
 
-        if ($request->sort == 'new') {
-            $submissions->orderBy('created_at', 'desc');
-        } elseif ($request->sort == 'rising') {
-            $submissions->where('created_at', '>=', Carbon::now()->subHour())
-                        ->orderBy('rate', 'desc');
-        } else {
-            $submissions->orderBy('rate', 'desc');
+        switch ($request->sort) {
+            case 'new':
+                $submissions->orderBy('created_at', 'desc');
+                break;
+
+            case 'rising':
+                $submissions->where('created_at', '>=', Carbon::now()->subHour())->orderBy('rate', 'desc');
+                break;
+
+            default: // hot
+                $submissions->orderBy('rate', 'desc');
+                break;
         }
 
-        return $submissions->simplePaginate(10);
+        $submissions->groupBy('url');
+
+        return $submissions->simplePaginate(15);
     }
 }

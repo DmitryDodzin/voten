@@ -1,250 +1,229 @@
 <template>
-	<div class="v-modal" id="search">
-	    <div class="v-close" data-toggle="tooltip" data-placement="bottom" title="Close (esc)" @click="close">
-	        <i class="v-icon block-before v-cancel" aria-hidden="true"></i>
-	    </div>
+    <div class="vo-modal" id="search">
+        <header class="user-select">
+            <div class="flex-space padding-desktop-1-mobile-half">
+                <div class="flex1">
+                    <el-input
+                            ref="searchFilter"
+                            :placeholder="placeholder"
+                            v-model="filter"
+                            class="input-with-select"
+                            clearable
+                            @input="search(filter)"
+                            :prefix-icon="loading ? 'el-icon-loading' : 'el-icon-search'"
+                    >
+                        <el-select
+                                v-model="type"
+                                slot="prepend"
+                                placeholder="Select search type">
+                            <el-option v-for="item in types" :label="item" :value="item" :key="item"></el-option>
+                        </el-select>
+                    </el-input>
+                </div>
 
-	    <div class="v-modal-title user-select">
-	        <h1 class="title">
-	            Search
-	        </h1>
-
-			<a href="https://www.algolia.com/referrals/fb684d54/join" target="_blank" rel="nofollow" class="margin-left-half">
-				<img src="/imgs/algolia-powered-by.svg" alt="search by algolia">
-			</a>
-
-	        <h4 class="sub-title">
-	            Let's find you whatever you're looking for
-	        </h4>
-	    </div>
-
-	    <div class="v-modal-search-box" :class="{ 'left-1': !sidebar }">
-	    	<div class="tabs is-fullwidth margin-bottom-1">
-				<ul>
-					<li :class="{ 'is-active--green': type == 'Categories'}">
-						<a class="h-green" @click="changeType('Categories')">
-							<span>Channels</span>
-						</a>
-					</li>
-
-					<li :class="{ 'is-active--green': type == 'Users'}">
-						<a class="h-green" @click="changeType('Users')">
-							<span>Users</span>
-						</a>
-					</li>
-
-					<li :class="{ 'is-active--green': type == 'Submissions'}">
-						<a class="h-green" @click="changeType('Submissions')">
-							<span>Submissions</span>
-						</a>
-					</li>
-
-					<li :class="{ 'is-active--green': type == 'Comments'}">
-						<a class="h-green" @click="changeType('Comments')">
-							<span>Comments</span>
-						</a>
-					</li>
-				</ul>
-			</div>
-
-            <div class="ui contacts search">
-                <div class="ui huge icon input">
-                    <input class="v-search" v-model="filter" type="text"
-						   :placeholder="placeholder"
-						   v-on:input="search(filter)" v-focus="focused" @focus="focused = true">
-
-					<i v-show="!loading" class="v-icon v-search search icon"></i>
-		        	<moon-loader :loading="loading" :size="'30px'" :color="'#777'"></moon-loader>
+                <!-- Cancel Button -->
+                <div>
+                    <el-button type="text" @click="close" class="margin-left-1">
+                        Cancel
+                    </el-button>
                 </div>
             </div>
-	    </div>
+        </header>
 
-	    <div class="container">
-	    	<div class="v-push-20"></div>
 
-	        <div class="col-7 user-select">
-	            <ul class="v-contact-list" v-if="type == 'Categories'">
-	            	<category-search-item v-for="category in categories" :list="category" :key="category.id"></category-search-item>
-	            </ul>
+        <div class="middle background-white">
+            <!--Algolia Logo -->
+            <div class="algolia desktop-only">
+                <a href="https://www.algolia.com/referrals/fb684d54/join" target="_blank" rel="nofollow">
+                    <img src="/imgs/algolia-powered-by.svg" alt="Search by algolia">
+                </a>
+            </div>
 
-	            <h1 class="align-center" v-if="noCategories && filter">
-	            	No #channel matched your keywords
-	            </h1>
 
-	            <ul class="v-search-items" v-if="type == 'Users'">
-	            	<user-search-item v-for="user in users" :list="user" :key="user.id"></user-search-item>
-	            </ul>
+            <div class="col-7 user-select padding-1">
+                <ul class="v-contact-list" v-if="type == 'Channels'">
+                    <channel-search-item v-for="channel in channels" :list="channel"
+                                          :key="channel.id"></channel-search-item>
+                </ul>
 
-	            <h1 class="align-center" v-if="noUsers && filter">
-	            	No user matched your keywords
-	            </h1>
+                <h1 class="align-center" v-if="noChannels && filter.trim()">
+                    No channel matched your keywords
+                </h1>
 
-	            <div v-if="type == 'Submissions'">
-			        <submission v-for="submission in submissions" :list="submission" :key="submission.id"></submission>
+                <ul class="v-search-items" v-if="type == 'Users'">
+                    <user-search-item v-for="user in users" :list="user" :key="user.id"></user-search-item>
+                </ul>
 
-			        <h1 class="align-center" v-if="noSubmissions && filter">
-		            	No submission matched your keywords
-		            </h1>
-			    </div>
+                <h1 class="align-center" v-if="noUsers && filter.trim()">
+                    No user matched your keywords
+                </h1>
 
-		    	<div class="ui threaded comments" v-if="type == 'Comments'">
-		    		<div v-for="comment in comments" class="comment-search-item" :key="comment.id">
-				        <comment :list="comment" :comments-order="'created_at'"></comment>
-				    </div>
+                <div v-if="type == 'Submissions'">
+                    <submission v-for="submission in submissions" :list="submission" :key="submission.id"></submission>
 
-				    <h1 class="align-center" v-if="noComments && filter">
-		            	No comment matched your keywords
-		            </h1>
-		    	</div>
-	        </div>
-	    </div>
-	</div>
+                    <h1 class="align-center" v-if="noSubmissions && filter.trim()">
+                        No submission matched your keywords
+                    </h1>
+                </div>
+            </div>
+        </div>
+    </div>
 </template>
 
 <script>
-import CategorySearchItem from '../components/CategorySearchItem.vue';
+import ChannelSearchItem from '../components/ChannelSearchItem.vue';
 import UserSearchItem from '../components/UserSearchItem.vue';
 import Submission from '../components/Submission.vue';
-import Comment from '../components/Comment.vue';
-import MoonLoader from '../components/MoonLoader.vue';
-import { focus } from 'vue-focus';
+import Helpers from '../mixins/Helpers';
 
 export default {
-	directives: {
-		focus: focus
-	},
+    mixins: [Helpers],
 
-	components: {
-		CategorySearchItem,
-		Comment,
-		Submission,
-		MoonLoader,
-		UserSearchItem
-	},
+    components: {
+        ChannelSearchItem,
+        Submission,
+        UserSearchItem
+    },
 
-	props: ['sidebar'],
+    data() {
+        return {
+            Store,
+            filter: '',
+            result: [],
+            loading: false,
+            channels: [],
+            users: [],
+            submissions: [],
+            type: 'Channels',
+            types: ['Channels', 'Submissions', 'Users']
+        };
+    },
 
-	data: function () {
-		return {
-			focused: true,
-			filter: '',
-			result: [],
-			loading: false,
-			categories: [],
-			users: [],
-			submissions: [],
-			comments: [],
-			type: 'Categories',
-		}
-	},
-
-	mounted: function () {
-		this.$nextTick(function () {
-			this.$root.loadSemanticTooltip()
+    mounted() {
+        this.$nextTick(function() {
+            this.$refs.searchFilter.$refs.input.focus();
 
             if (this.$route.query.search) {
                 this.filter = this.$route.query.search;
                 this.type = 'Submissions';
                 this.search();
             }
-		})
-	},
+        });
+    },
 
+    beforeDestroy() {
+        if (window.location.hash == '#search') {
+            history.go(-1);
+        }
+        this.$eventHub.$off('pressed-esc', this.close);
+    },
 
-	computed: {
-		noSubmissions() {
-			return this.type == 'Submissions' && this.submissions.length == 0;
-		},
+    created() {
+        window.location.hash = 'search';
+        this.$eventHub.$on('pressed-esc', this.close);
+    },
 
-		noComments() {
-			return this.type == 'Comments' && this.comments.length == 0;
-		},
+    computed: {
+        noSubmissions() {
+            return (
+                this.type == 'Submissions' &&
+                this.submissions.length == 0 &&
+                !this.loading
+            );
+        },
 
-		noCategories() {
-			return this.type == 'Categories' && this.categories.length == 0;
-		},
+        noChannels() {
+            return (
+                this.type == 'Channels' &&
+                this.channels.length == 0 &&
+                !this.loading
+            );
+        },
 
-		noUsers() {
-			return this.type == 'Users' && this.users.length == 0;
-		},
+        noUsers() {
+            return (
+                this.type == 'Users' && this.users.length == 0 && !this.loading
+            );
+        },
 
-		placeholder() {
-		    if (this.type == 'Categories') {
-		        return 'Search by #name or description...';
-			}
-
-			if (this.type == 'Users') {
-		        return 'Search by @username or name...';
-			}
-
+        placeholder() {
+            if (this.type == 'Channels') {
+                return 'Search by #name or description...';
+            }
+            if (this.type == 'Users') {
+                return 'Search by @username or name...';
+            }
             if (this.type == 'Submissions') {
                 return 'Search by title...';
             }
 
-            if (this.type == 'Comments') {
-                return 'Search by content...';
-            }
-
             return 'Search...';
-		}
-	},
+        }
+    },
 
-	methods: {
-		/**
-    	 * Gets the data with ajax call and put it in the correct array
-    	 */
-		search: _.debounce(function () {
-			if(!this.filter.trim()) return
+    watch: {
+        $route() {
+            if (window.location.hash) return;
+            this.close();
+        },
 
-			this.loading = true;
+        type() {
+            this.search();
+        }
+    },
 
-			axios.get('/search', {
-				params: {
-	                type: this.type,
-	                searched: this.filter,
-				}
-            }).then((response) => {
-            	if( this.type == 'Categories' ) {
-            		this.categories = response.data;
-            	}
+    methods: {
+        search: _.debounce(function() {
+            if (!this.filter.trim()) return;
+            this.loading = true;
 
-            	if( this.type == 'Users' ) {
-            		this.users = response.data;
-            	}
+            axios
+                .get('/search', {
+                    params: {
+                        type: this.type,
+                        keyword: this.filter
+                    }
+                })
+                .then((response) => {
+                    if (this.type == 'Channels') {
+                        this.channels = response.data.data;
+                    }
 
-            	if( this.type == 'Comments' ) {
-            		this.comments = response.data;
-            	}
+                    if (this.type == 'Users') {
+                        this.users = response.data.data;
+                    }
 
-            	if( this.type == 'Submissions' ) {
-            		this.submissions = response.data;
-            	}
+                    if (this.type == 'Submissions') {
+                        this.submissions = response.data.data;
+                    }
 
-            	this.loading = false;
-            }).catch((error) => {
-            	this.loading = false;
-            });
-		}, 600),
+                    this.loading = false;
+                })
+                .catch(() => {
+                    this.loading = false;
+                });
+        }, 600),
 
-		/**
-    	 * Changes the type of the search
-    	 * @return void
-    	 */
-    	changeType: function (type) {
-    		if(this.type == type) return
-
-			this.type = type
-			this.search()
-		},
-
-    	/**
-    	 * Fires the 'close' event which causes all the modals to be closed.
-    	 *
-    	 * @return void
-    	 */
-    	close () {
-    		this.$eventHub.$emit('close')
-    	}
-	}
-}
+        close() {
+            Store.modals.search.show = false;
+        }
+    }
+};
 </script>
+
+<style>
+.algolia {
+    opacity: 0.6;
+    position: fixed;
+    bottom: 1em;
+    right: 2em;
+}
+
+.input-with-select .el-input {
+    width: 130px;
+}
+
+.input-with-select .el-input-group__prepend {
+    background-color: #fff;
+}
+</style>

@@ -34,7 +34,7 @@ class CommentVotesController extends Controller
         // remove the $comment_id from the array
         if ($previous_vote == 'upvote') {
             $upvotes = array_values(array_diff($upvotes, [$comment_id]));
-            $this->updateCommentKarma($author_id, -1);
+            $this->updateCommentXp($author_id, -1);
         }
 
         // remove the $comment_id from the downvotes array and add it to the upvotes array
@@ -45,13 +45,13 @@ class CommentVotesController extends Controller
             array_push($upvotes, $comment_id);
 
             $this->updateCommentDownvotesIds($voter_id, $downvotes);
-            $this->updateCommentKarma($author_id, 2);
+            $this->updateCommentXp($author_id, 2);
         }
 
         // add the $comment_id to the array
         if ($previous_vote == null) {
             array_push($upvotes, $comment_id);
-            $this->updateCommentKarma($author_id, 1);
+            $this->updateCommentXp($author_id, 1);
         }
 
         $this->updateCommentUpvotesIds($voter_id, $upvotes);
@@ -74,7 +74,7 @@ class CommentVotesController extends Controller
         // remove the $comment_id from the array
         if ($previous_vote == 'downvote') {
             $downvotes = array_values(array_diff($downvotes, [$comment_id]));
-            $this->updateCommentKarma($author_id, 1);
+            $this->updateCommentXp($author_id, 1);
         }
 
         // remove the $comment_id from the downvotes array and add it to the upvotes array
@@ -85,13 +85,13 @@ class CommentVotesController extends Controller
             array_push($downvotes, $comment_id);
 
             $this->updateCommentUpvotesIds($voter_id, $upvotes);
-            $this->updateCommentKarma($author_id, -2);
+            $this->updateCommentXp($author_id, -2);
         }
 
         // add the $comment_id to the array
         if ($previous_vote == null) {
             array_push($downvotes, $comment_id);
-            $this->updateCommentKarma($author_id, -1);
+            $this->updateCommentXp($author_id, -1);
         }
 
         $this->updateCommentDownvotesIds($voter_id, $downvotes);
@@ -121,18 +121,18 @@ class CommentVotesController extends Controller
                 $new_downvotes = ($comment->downvotes - 1);
                 $user->commentDownvotes()->detach($request->comment_id);
                 $user->commentUpvotes()->attach($request->comment_id, [
-                'ip_address' => getRequestIpAddress(),
-            ]);
+                    'ip_address' => getRequestIpAddress(),
+                ]);
             } else {
                 $new_upvotes = ($comment->upvotes + 1);
                 $user->commentUpvotes()->attach($request->comment_id, [
-                'ip_address' => getRequestIpAddress(),
-            ]);
+                    'ip_address' => getRequestIpAddress(),
+                ]);
             }
 
             $this->updateUserUpVotesRecords(
-            $user->id, $comment->owner->id, $request->previous_vote, $request->comment_id
-        );
+                $user->id, $comment->owner->id, $request->previous_vote, $request->comment_id
+            );
         } catch (\Exception $e) {
             return response('invalid request', 500);
         }
@@ -236,10 +236,6 @@ class CommentVotesController extends Controller
      */
     public function isCheating($user_id, $comment_id, $type = 'upvote')
     {
-        if (Auth::user()->isShadowBanned()) {
-            return true;
-        }
-
         // we don't want new registered users do downvotes and mess with the averate vote numbers, so:
         if ($type == 'downvote' && Auth::user()->created_at > Carbon::now()->subDays(3)) {
             return true;

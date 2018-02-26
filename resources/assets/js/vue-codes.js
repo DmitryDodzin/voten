@@ -1,177 +1,209 @@
-import KeyboardShortcutsGuide from './components/KeyboardShortcutsGuide.vue';
-import ReportSubmission from './components/ReportSubmission.vue';
-import ReportTableItem from './components/ReportTableItem.vue';
-import CategoryAvatar from './components/CategoryAvatar.vue';
-import ReportComment from './components/ReportComment.vue';
-import Notifications from './components/Notifications.vue';
-import MarkdownGuide from './components/MarkdownGuide.vue';
-import Subscribe from './components/Subscribe-button.vue';
-import VuiMenuButton from './components/Menu-button.vue';
 import GuestSidebar from './components/GuestSidebar.vue';
-import SearchModal from './components/SearchModal.vue';
-import ScrollButton from './components/ScrollButton.vue';
-import WebNotification from './mixins/WebNotification';
-import AvatarEdit from './components/AvatarEdit.vue';
-import Moderators from './components/Moderators.vue';
-import LoginModal from './components/LoginModal.vue';
-import CropModal from './components/CropModal.vue';
-import Dashboard from './components/Dashboard.vue';
-import NotFound from './components/NotFound.vue';
-import Feedback from './components/Feedback.vue';
-import Messages from './components/Messages.vue';
-import LocalStorage from './mixins/LocalStorage';
-import StoreStorage from './mixins/StoreStorage';
-import Sidebar from './components/Sidebar.vue';
-import Rules from './components/Rules.vue';
-import Helpers from './mixins/Helpers';
-import autosize from 'autosize';
-import router from './routes';
+import AuthenticationModal from './components/AuthenticationModal.vue';
+import GoogleLoginButton from './components/GoogleLoginButton.vue';
 
+import Feedback from './components/Feedback.vue';
+import Notifications from './components/Notifications.vue';
+import Messages from './components/Messages.vue';
+import Preferences from './components/Preferences.vue';
+import RightSidebar from './components/auth/RightSidebar.vue';
+import NewSubmission from './components/NewSubmission.vue';
+import NewChannel from './components/NewChannel.vue';
+import ReportSubmission from './components/ReportSubmission.vue';
+import ReportComment from './components/ReportComment.vue';
+import FeedSettings from './components/FeedSettings.vue';
+import SidebarSettings from './components/RightSidebarSettings.vue';
+
+import EmbedViewer from './components/Embed.vue';
+import GifPlayer from './components/GifPlayer.vue';
+import PhotoViewer from './components/PhotoViewer.vue';
+
+import KeyboardShortcutsGuide from './components/KeyboardShortcutsGuide.vue';
+import MarkdownGuide from './components/MarkdownGuide.vue';
+
+import SearchModal from './components/SearchModal.vue';
+import NotFound from './components/NotFound.vue';
+import StoreStorage from './mixins/StoreStorage';
+import LeftSidebar from './components/auth/LeftSidebar.vue';
+import Helpers from './mixins/Helpers';
+import FontLoader from './mixins/FontLoader';
+import router from './routes';
+import Announcement from './components/Announcement.vue';
+import Tour from './components/Tour';
+import MobileVisitorWarning from './components/MobileVisitorWarning';
+
+import PassportClients from './components/passport/Clients.vue';
+import PassportAuthorizedClients from './components/passport/AuthorizedClients.vue';
+import PassportPersonalAccessTokens from './components/passport/PersonalAccessTokens.vue';
 
 /**
  * This is our event bus, which is used for event dispatching. The base is that we create an empty
  * Vue instance. First we fire the event by: "this.$eventHub.$emit('eventName', 'data')"
  * and later we listen for it by: "this.$eventHub.$on('eventName', this.newComment)"
  *
- *
- * (which is defined in the created() function of the vue componentr (or root instance), after catching the
- * event, passes the data to the defined funciton. In this example case it's newComment() but notice that
+ * (which is defined in the created() function of the vue component (or root instance), after catching the
+ * event, passes the data to the defined function. In this example case it's newComment() but notice that
  * it doesn't require to be actually written as argumans! ) Happy eventing in your awesome components.
  */
 Vue.prototype.$eventHub = new Vue();
-
-
-/**
- * A great wrapper for using LocalStorage which we take advantage of a looot!
- */
-import VueLocalStorage from 'vue-ls';
-const localStorageConfig = {
-    namespace: auth.username + '__voten__'
-};
-Vue.use(VueLocalStorage, localStorageConfig);
-
-
 
 /**
  * The very serious and important vue instance!!! This is what gives power to voten's
  * front-end. Try to love it, maintain it, appriciate it and maybe even more! This
  * also plays a role in switching states and maintaining the Store.
  */
-const app = new Vue({
+window.app = new Vue({
     router,
 
-    mixins: [Helpers, LocalStorage, StoreStorage, WebNotification],
+    mixins: [Helpers, StoreStorage, FontLoader],
 
     components: {
-    	KeyboardShortcutsGuide,
+        PassportClients,
+        PassportAuthorizedClients,
+        PassportPersonalAccessTokens,
+
+        KeyboardShortcutsGuide,
+        MobileVisitorWarning,
+        AuthenticationModal,
+        GoogleLoginButton,
         ReportSubmission,
-        ReportTableItem,
-        CategoryAvatar,
-    	MarkdownGuide,
-        ReportComment,
+        SidebarSettings,
+        MarkdownGuide,
+        FeedSettings,
         Notifications,
-        VuiMenuButton,
-        ScrollButton,
+        ReportComment,
+        NewSubmission,
+        Announcement,
+        RightSidebar,
         GuestSidebar,
+        PhotoViewer,
+        EmbedViewer,
+        LeftSidebar,
         SearchModal,
-        LoginModal,
-        AvatarEdit,
-        Moderators,
-        CropModal,
-        Subscribe,
-        Dashboard,
+        Preferences,
+        NewChannel,
+        GifPlayer,
         NotFound,
-        Feedback,
         Messages,
-        Sidebar,
-        Rules,
+        Feedback,
+        Tour
     },
 
     data: {
-        modalRouter: '',
-        reportCategory: '',
-        reportSubmissionId: '',
-        reportCommentId: '',
-        sidebar: true,
-        sortFilter: 'hot',
+        showSidebars: true,
         pageTitle: document.title
     },
 
     computed: {
-        smallModal() {
-            return !(this.modalRouter == '')
-        },
-
         unreadNotifications() {
-            return Store.notifications.filter(function(item) {
-                return item.read_at == null
-            }).length
+            try {
+                return Store.state.notifications.filter(
+                    (item) => item.read_at == null
+                ).length;
+            } catch (error) {
+                return 0;
+            }
         },
 
         unreadMessages() {
-            return Store.contacts.filter(function(item) {
-                return item.last_message.owner.id != auth.id && item.last_message.read_at == null
-            }).length
-        },
-    },
-
-
-    watch: {
-        // if the route changes, call again the method
-        '$route' () {
-            this.closeModals()
-
-            if (auth.isMobileDevice) {
-            	this.sidebar = false
+            try {
+                return Store.state.contacts.filter(
+                    (item) =>
+                        !_.isUndefined(item.last_message.author) &&
+                        item.last_message.author.id != auth.id &&
+                        item.last_message.read_at == null
+                ).length;
+            } catch (error) {
+                return 0;
             }
-
-            if (this.$route.query.sidebar == 1) {
-                this.sidebar = true
-            }
-        },
-    },
-
-
-    created: function() {
-        window.addEventListener('keydown', this.keydown);
-
-        this.fillBasicStore();
-
-        this.setSidebar();
-
-        // Let's hear it for the events, shall we?
-        this.$eventHub.$on('start-conversation', this.startConversation);
-        this.$eventHub.$on('report-submission', this.reportSubmission);
-        this.$eventHub.$on('toggle-sidebar', this.toggleSidebar);
-        this.$eventHub.$on('new-route', this.newRoute);
-        this.$eventHub.$on('close', this.closeModals);
-        this.$eventHub.$on('new-modal', this.newModal);
-        this.$eventHub.$on('rules', this.categoryRules);
-        this.$eventHub.$on('login-modal', this.loginModal);
-        this.$eventHub.$on('category-sort', this.categorySort);
-        this.$eventHub.$on('report-comment', this.reportComment);
-        this.$eventHub.$on('moderators', this.categoryModerators);
-        this.$eventHub.$on('markdown-guide', this.openMarkdownGuide);
-        this.$eventHub.$on('crop-user-photo', this.cropUserModal);
-        this.$eventHub.$on('push-notification', this.pushNotification)
-        this.$eventHub.$on('crop-category-photo', this.cropCategoryModal);
-
-        if (this.$route.query.search) {
-            this.changeRoute('search');
         }
     },
 
-    mounted() {
-        this.$nextTick(function() {
-            this.loadCheckBox()
-            this.loadSemanticTooltip()
-            this.loadSemanticDropdown()
-        })
+    watch: {
+        unreadNotifications() {
+            this.updatePageTitle();
+        },
+
+        unreadMessages() {
+            this.updatePageTitle();
+        },
+
+        '$route.query'() {
+            this.setQueries();
+        }
+    },
+
+    created() {
+        this.loadWebFont();
+        this.fillBasicStore();
+
+        window.addEventListener('keydown', this.keydown);
+        window.addEventListener('hashchange', this.setHashes);
+
+        // Let's hear it for the events, shall we?
+        this.$eventHub.$on('start-conversation', this.startConversation);
+        this.$eventHub.$on('submit', this.showNewSubmission);
+        this.$eventHub.$on('login-modal', this.loginModal);
+        this.$eventHub.$on('markdown-guide', this.openMarkdownGuide);
+        this.$eventHub.$on('push-notification', this.pushNotification);
+
+        if (this.$route.query.search) {
+            Store.modals.search.show = true;
+        }
+
+        this.setQueries();
+        this.setHashes();
+        this.warnMobileUsers();
     },
 
     methods: {
+        warnMobileUsers() {
+            if (this.isMobile) {
+                Store.modals.mobileVisitorWarning.show = true;
+            }
+        },
+
+        setHashes() {
+            let hash = window.location.hash;
+
+            if (!hash) {
+                _.forEach(Store.modals, (item) => {
+                    item.show = false;
+                });
+            } else {
+                let modal = _.find(Store.modals, (item) => {
+                    return item.hash == hash.substr(1);
+                });
+
+                // if didn't found, means it's supposed to be closed. So leave it be and just unset window.location.hash
+                if (modal == undefined) {
+                    window.location.hash = '';
+                } else {
+                    modal.show = true;
+                }
+            }
+        },
+
+        setQueries() {
+            // sidebar
+            if (this.$route.query.sidebar == 1) {
+                this.showSidebars = true;
+            } else if (this.$route.query.sidebar == 0) {
+                this.showSidebars = false;
+            }
+
+            // feedback
+            if (this.$route.query.feedback == 1) {
+                Store.modals.feedback.show = true;
+            }
+        },
+
+        loginModal() {
+            Store.modals.authintication.show = true;
+        },
+
         openMarkdownGuide() {
-            this.changeModalRoute('markdown-guide')
+            Store.modals.markdownGuide.show = true;
         },
 
         /**
@@ -181,217 +213,23 @@ const app = new Vue({
          * @return void
          */
         pushNotification(data) {
-            this.webNotification(data.title, data.body, data.url, data.icon);
-        },
+            let self = this;
 
-        /**
-         * Catches the scroll event and fires the neccessary ones for componenets. (Such as Inifinite Scrolling)
-         *
-         * @return void
-         */
-        scrolled(event) {
-        	this.$eventHub.$emit('scrolled');
+            Push.create(data.title, {
+                body: data.body,
+                icon: data.icon ? data.icon : '/imgs/v-logo.png',
+                timeout: 5000,
+                onClick: function() {
+                    if (data.url == 'new-message') {
+                        Store.modals.messages.show = true;
+                    } else {
+                        self.$router.push(data.url);
+                    }
 
-            let box = event.target;
-
-            if ((box.scrollHeight - box.scrollTop) < (box.clientHeight + 100)) {
-                this.$eventHub.$emit('scrolled-to-bottom');
-            }
-
-            if (box.scrollTop < 1500) {
-                this.$eventHub.$emit('scrolled-a-bit');
-            }else{
-                this.$eventHub.$emit('scrolled-a-lot');
-            }
-        },
-
-        /**
-         * Fetches the info about the user which we need later
-         *
-         * @return void
-         * @param {String} username
-         */
-        getUserStore() {
-        	// if landed on the user page as guest
-        	if (preload.user) {
-        		this.submissions = preload.user;
-
-				Store.user = preload.user
-
-                if (Store.user.id == auth.id) {
-                	auth.stats = Store.user.stats
-                }
-
-				// clear the preload
-				delete preload.user;
-
-				return;
-        	}
-
-            axios.get('/get-user-store', {
-            	params: {
-            		username: this.$route.params.username
-            	}
-            }).then((response) => {
-                Store.user = response.data
-
-                if (Store.user.id == auth.id) {
-                	auth.stats = Store.user.stats
-                }
-            }).catch((error) => {
-                if (error.response.status === 404) {
-                    this.$router.push('/404')
+                    window.focus();
+                    this.close();
                 }
             });
-        },
-
-        /**
-         * navigates to home route. aaaand bit more in case the current route IS "home"
-         *
-         * @return void
-         */
-        homeRoute() {
-            this.closeModals();
-
-            if (this.$route.name === 'home') {
-            	this.$eventHub.$emit('refresh-home');
-            }
-        },
-
-        /**
-         * Fetches the info about the category which we need later
-         *
-         * @return void
-         * @param string name
-         */
-        getCategoryStore(name) {
-        	// if landed on a submission page
-        	if (preload.category && preload.category.name == this.$route.params.name) {
-        		Store.category = preload.category;
-        		delete preload.category;
-        		return;
-        	}
-
-            axios.get('/get-category-store', {
-            	params: {
-            		name: name
-            	}
-            }).then((response) => {
-                Store.category = response.data
-
-                // update the category in the user's subscriptions (avatar might have changed)
-                let category_id = Store.category.id
-                function findObject(ob) {
-	                return ob.id === category_id
-	            }
-	            let i = Store.subscribedCategories.findIndex(findObject)
-
-	            if (i != -1 && Store.subscribedCategories[i].avatar != response.data.avatar) {
-	            	Store.subscribedCategories[i].avatar = response.data.avatar
-	            	this.putLS('subscribedCategories', Store.subscribedCategories)
-	            }
-
-	            // update the category in the user's moderating (avatar might have changed)
-	            i = Store.moderatingCategories.findIndex(findObject)
-
-	            if ( i != -1 && Store.moderatingCategories[i].avatar != response.data.avatar) {
-	            	Store.moderatingCategories[i].avatar = response.data.avatar
-	            	this.putLS('moderatingCategories', Store.moderatingCategories)
-	            }
-            }).catch((error) => {
-                if (error.response.status === 404) {
-                    this.$router.push('/404')
-                }
-            });
-        },
-
-        /**
-         * Runned at the page load, sets the default valie for this.sidebar
-         *
-         * @return Boolean
-         */
-        setSidebar() {
-    		if (this.$route.query.sidebar == 0) {
-   				this.sidebar = false;
-   				return;
-   			}
-
-            if (this.$route.query.sidebar == 1) {
-   				this.sidebar = true;
-   				return;
-   			}
-
-   			if (auth.isMobileDevice) {
-   				this.sidebar = false;
-   				return;
-   			}
-
-   			if (this.isSetLS('sidebar')) {
-   				this.sidebar = this.getLS('sidebar');
-   				return;
-   			}
-    	},
-
-    	/**
-         * Hide/Show the sidebar
-         *
-         * @return void
-         */
-        toggleSidebar () {
-        	this.sidebar = !this.sidebar
-        	this.putLS('sidebar', this.sidebar)
-        },
-
-        /**
-         * Loads Semantic UI's dropdown components. Sending an ID would make this a lot faster
-         *
-         * @return void
-         */
-        loadSemanticDropdown (targetID = 'someID') {
-        	if (targetID != 'someID') {
-        		$('#' + targetID +' .ui.dropdown').dropdown({ duration: 50 });
-
-        		return;
-        	}
-
-            $('.ui.dropdown').dropdown({ duration: 50 });
-        },
-
-        /**
-         * Loads Semantic UI's Tooltip component
-         *
-         * @return void
-         */
-        loadSemanticTooltip() {
-            $('[data-toggle="tooltip"]').tooltip({ trigger: "hover", delay: { show: 500, hide: 100 } })
-        },
-
-        /**
-         * Loads Semantic UI's Tooltip component
-         *
-         * @return void
-         */
-        loadSemanticPopup() {
-            $('.s-popup').popup({ inline: true });
-        },
-
-        /**
-         * Loads the Semantic UI's CheckBox component
-         *
-         * @return void
-         */
-        loadCheckBox() {
-            $('.ui.checkbox').checkbox()
-        },
-
-        /**
-         * Auto resizes the text area. To make it work we need to call it by :
-         * "this.$root.autoResize()"in the ready(){} method of the component
-         *
-         * @return void
-         */
-        autoResize() {
-            autosize(document.querySelectorAll('textarea'));
         },
 
         /**
@@ -400,74 +238,27 @@ const app = new Vue({
          * @return void
          */
         startConversation(contact) {
-            this.changeRoute('messages')
-            this.$eventHub.$emit('conversation', contact)
+            Store.modals.messages.show = true;
+            this.$eventHub.$emit('conversation', contact);
         },
 
         /**
-         * Opens the comment-reporting modal
+         * show the submit modal.
          *
          * @return void
          */
-        reportComment(id, category) {
-            this.closeModals()
-            this.reportCommentId = id
-            this.reportCategory = category
-            this.modalRouter = 'report-comment'
+        showNewSubmission() {
+            Store.modals.newSubmission.show = true;
         },
 
         /**
-         * Opens that submission-reporting modal
+         * show the submit modal.
          *
          * @return void
          */
-        reportSubmission(id, category) {
-            this.closeModals()
-            this.reportSubmissionId = id
-            this.reportCategory = category
-            this.modalRouter = 'report-submission'
+        showNewChannel() {
+            Store.modals.newChannel.show = true;
         },
-
-        /**
-         * Opens that user avatar crop modal
-         *
-         * @return void
-         */
-        cropUserModal() {
-            this.closeModals()
-            this.modalRouter = 'crop-user'
-        },
-
-        /**
-         * Opens that category avatar crop modal
-         *
-         * @return void
-         */
-        cropCategoryModal() {
-            this.closeModals()
-            this.modalRouter = 'crop-category'
-        },
-
-        /**
-         * Switches the modalRouter
-         *
-         * @return void
-         */
-        newModal(route) { this.modalRouter = route },
-
-        /**
-         * Switches the to the dispatched route (without any checking)
-         *
-         * @return void
-         */
-        newRoute(route) { Store.contentRouter = route },
-
-        /**
-         * Sets the default sort type in a category
-         *
-         * @return void
-         */
-        categorySort(sort) { this.sortFilter = sort },
 
         /**
          * Updates the <title> by adding the number of notifications and messages
@@ -475,91 +266,13 @@ const app = new Vue({
          * @return void
          */
         updatePageTitle() {
-            var total = Store.unreadMessages + Store.unreadNotifications
+            let total = this.unreadMessages + this.unreadNotifications;
 
             if (total > 0) {
-                document.title = '(' + total + ') ' + this.pageTitle
-                return
+                document.title = '(' + total + ') ' + this.pageTitle;
+            } else {
+                document.title = this.pageTitle;
             }
-
-            document.title = this.pageTitle
-        },
-
-        /**
-         * Switches the route
-         *
-         * @param  string
-         */
-        changeRoute(newRoute) {
-            Store.contentRouter = newRoute
-
-            if (newRoute == 'notifications') {
-                this.markAsRead()
-                this.updatePageTitle()
-            }
-
-            if (newRoute == 'messages') {
-                // this.MN = 0
-                this.updatePageTitle()
-            }
-        },
-
-        /**
-         * Marks all user notifications as read
-         *
-         * @return void
-         */
-        markAsRead() {
-            axios.post('/mark-notifications-read');
-
-            Store.notifications.forEach(function(element, index) {
-                if (!element.read_at) {
-                    element.read_at = moment().utc().format('YYYY-MM-DD HH:mm:ss');
-                }
-            });
-        },
-
-        /**
-         * Switches the route
-         *
-         * @param {String} newRoute
-         * @return void
-         */
-        changeModalRoute(newRoute) {
-            this.closeModals()
-            this.modalRouter = newRoute
-        },
-
-        // Used for keyup.esc
-        closeModals() {
-            Store.contentRouter = 'content'
-            this.modalRouter = ''
-        },
-
-        // Displays a smallModal containing category rules
-        categoryRules() {
-            this.modalRouter = 'rules'
-        },
-
-        // Displays the login modal
-        loginModal() {
-            this.modalRouter = 'login'
-        },
-
-        // Displays a smallModal containing category moderators
-        categoryModerators() {
-            this.modalRouter = 'moderators'
-        },
-
-        // Tells the component (that contains submissions) to change the sort method.
-        sortBy(sort, event) {
-            if (this.sortFilter == sort) {
-                return
-            }
-
-            event.preventDefault()
-            this.sortFilter = sort
-            this.$eventHub.$emit('sort-by', sort)
         },
 
         /**
@@ -568,73 +281,78 @@ const app = new Vue({
          * @param {keydown} event
          * @return void
          */
-        keydown(event){
+        keydown(event) {
             // esc
             if (event.keyCode == 27) {
-                this.closeModals()
+                this.$eventHub.$emit('pressed-esc');
             }
 
             // all shortcuts after this one need to be prevented if user is typing
-            if (this.isTyping(event)) return
+            if (this.whileTyping(event)) return;
 
             // alt + s == event.altKey && event.keyCode == 83
-        	if (event.altKey && event.keyCode == 83) { // alt + s
-        		this.$router.push('/submit')
-        		return
-        	}
-
-        	if (event.altKey && event.keyCode == 67) { // alt + c
-        		this.$router.push('/channel')
-        		return
-        	}
-
-        	if(event.shiftKey && event.keyCode == 191){ // shift + /
-                this.changeModalRoute('keyboard-shortcuts-guide');
+            if (event.altKey && event.keyCode == 83) {
+                // alt + s
+                this.showNewSubmission();
                 return;
             }
 
-        	switch(event.keyCode) {
-                case 83: // "s"
-			        this.toggleSidebar()
-			        break
-			    case 78: // "n"
-			    	if (this.isGuest) break;
+            if (event.altKey && event.keyCode == 67) {
+                // alt + c
+                this.showNewChannel();
+                return;
+            }
 
-			        this.changeRoute('notifications')
-			        break
-		        case 77: // "m"
-		        	if (this.isGuest) break;
+            if (event.shiftKey && event.keyCode == 191) {
+                // shift + /
+                Store.modals.keyboardShortcutsGuide.show = true;
+                return;
+            }
 
-			        this.changeRoute('messages')
-			        break
-    	        case 191: // "/"
-    	        	event.preventDefault()
-			        this.changeRoute('search')
-			        break
-    	        case 66: // "b"
-    	        	if (this.isGuest) break;
+            if (event.metaKey && event.keyCode == 82) {
+                return;
+            }
 
-			        this.$router.push('/bookmarks')
-			        break
-    	        case 72: // "h"
-			        this.$router.push('/')
-			        break
-    	        case 80: // "p"
-                    if (this.isGuest) break
+            switch (event.keyCode) {
+                case 78: // "n"
+                    if (this.isGuest) break;
 
-			        this.$router.push('/@' + this.auth.username)
-			        break
-    	        case 82: // "r"
-                    if (this.$route.name === 'home'){
-                        this.$eventHub.$emit('refresh-home')
-                    }else if(this.$route.name === 'category-submissions'){
-                        this.$eventHub.$emit('refresh-category-submissions')
+                    Store.modals.notifications.show = true;
+                    break;
+                case 77: // "m"
+                    if (this.isGuest) break;
+
+                    event.preventDefault();
+                    Store.modals.messages.show = true;
+                    break;
+                case 191: // "/"
+                    event.preventDefault();
+                    Store.modals.search.show = true;
+                    break;
+                case 66: // "b"
+                    if (this.isGuest) break;
+
+                    this.$router.push('/bookmarks');
+                    break;
+                case 72: // "h"
+                    this.$router.push('/');
+                    break;
+                case 80: // "p"
+                    if (this.isGuest) break;
+
+                    this.$router.push('/@' + this.auth.username);
+                    break;
+                case 82: // "r"
+                    if (this.$route.name === 'home') {
+                        this.$eventHub.$emit('refresh-home');
+                    } else if (this.$route.name === 'channel-submissions') {
+                        this.$eventHub.$emit('refresh-channel-submissions');
                     }
 
-			        break
-			    default:
-			        return
-			}
-        },
-    },
+                    break;
+                default:
+                    return;
+            }
+        }
+    }
 }).$mount('#voten-app');

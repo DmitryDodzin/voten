@@ -9,15 +9,18 @@
             </div>
 
             <div class="actions">
-                <i class="pointer v-icon go-gray v-calendar-1 h-green"
-                    data-toggle="tooltip" data-placement="top" :title="'Unban ' + date"></i>
+                <el-tooltip content="Reason" placement="top" transition="false" :open-delay="500">
+                    <i class="pointer v-icon go-gray v-attention-alt h-yellow" :class="list.description ? '' : 'display-hidden'"
+                       @click="showDescription = !showDescription"></i>
+                </el-tooltip>
 
-                <i class="pointer v-icon go-gray v-delete h-red" @click="$emit('unban', list.user_id)"
-                    data-toggle="tooltip" data-placement="top" title="Unban"></i>
+                <el-tooltip content="Unban" placement="top" transition="false" :open-delay="500">
+                    <i class="pointer v-icon go-gray v-delete h-red" @click="$emit('unban', list.user_id)"></i>
+                </el-tooltip>
 
-                <i class="pointer v-icon go-gray v-attention-alt h-yellow" :class="list.description ? '' : 'display-hidden'"
-                    @click="showDescription = !showDescription"
-                    data-toggle="tooltip" data-placement="top" title="Reason for being banned"></i>
+                <el-tooltip :content="'Unban ' + date" placement="top" transition="false" :open-delay="500">
+                    <i class="pointer v-icon go-gray v-calendar-1 h-green"></i>
+                </el-tooltip>
             </div>
         </div>
 
@@ -28,65 +31,62 @@
 </template>
 
 <script>
-    import Markdown from '../components/Markdown.vue'
+import Markdown from '../components/Markdown.vue';
+import Helpers from '../mixins/Helpers';
 
-    export default {
-        components: { Markdown },
+export default {
+    mixins: [Helpers],
 
-        data: function () {
-            return {
-                showDescription: false
-            }
-        },
+    components: { Markdown },
 
-        props: ['list'],
+    data() {
+        return {
+            showDescription: false
+        };
+    },
 
-        computed: {
-            date () {
-                return moment(this.list.unban_at).utc(moment().format("Z")).fromNow()
-            },
-        },
+    props: ['list'],
 
-        mounted: function() {
-            this.$nextTick(function() {
-                this.$root.loadSemanticTooltip()
-            })
-        },
-    };
+    computed: {
+        date() {
+            return this.parsDiffForHumans(this.list.unban_at);
+        }
+    }
+};
 </script>
 
 <style>
-    .banned-user {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }
+.banned-user {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
 
-    .banned-user-wrapper {
-        border-bottom: 1px dashed #dcdcdc;
-        padding-bottom: .3em;
-        margin-bottom: .3em;
-    }
+.banned-user-wrapper {
+    border-bottom: 1px dashed #dcdcdc;
+    padding-bottom: 0.3em;
+    margin-bottom: 0.3em;
+}
 
-    .banned-user a {
-        color: #333;
-    }
+.banned-user a {
+    color: #333;
+}
 
-    .banned-user img {
-        width: 25px;
-        height: auto;
-        border-radius: 50%;
-        margin-right: .2em;
-    }
+.banned-user img {
+    width: 25px;
+    height: auto;
+    border-radius: 50%;
+    margin-right: 0.2em;
+}
 
-    .banned-user-description {
-        background: #fdfdfd;
-        color: #333;
-        border: 1px solid #e7e7e7;
-        padding: .5em;
-        border-radius: 2px;
-        line-height: 2;
-        overflow: auto;
-        margin: .3em;
-    }
+.banned-user-description {
+    background: #fdfdfd;
+    color: #333;
+    border: 1px solid #e7e7e7;
+    padding: 0.5em;
+    border-radius: 2px;
+    line-height: 2;
+    overflow: auto;
+    margin: 0.3em;
+}
 </style>

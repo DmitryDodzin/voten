@@ -8,24 +8,29 @@
     align-items: center;
     margin-bottom: 1em;
     background: #f9f9f9;
+
+    small {
+        margin-left: 0.5em;
+        font-size: 52%;
+    }
 }
 
 @media screen and (max-width: 768px) {
-	.bookmarked-item {
-	    margin: .5em 1em;
-	}
+    .bookmarked-item {
+        margin: 0.5em 1em;
+    }
 }
 
 @media screen and (min-width: 768px) {
-	.bookmarked-item {
-	    width: 100%;
-	}
+    .bookmarked-item {
+        width: 100%;
+    }
 }
 
 .bookmarked-item .v-bookmark,
 .bookmarked-item .v-unbookmark {
     font-size: 15px;
-    margin-left: .2em;
+    margin-left: 0.2em;
 }
 
 .bookmarked-item a {
@@ -40,22 +45,30 @@
     color: #595959;
 }
 
+.bookmarked-item h2 {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.bookmarked-item p {
+    font-size: 14px;
+}
+
 .bookmarked-item .avatar {
     flex-basis: 65px;
-    margin-right: 2em;
+    margin-right: 1em;
 }
 @media screen and (max-width: 768px) {
-  .bookmarked-item .avatar {
-    flex-basis: 48px;
-    margin-right: 1em;
-  }
+    .bookmarked-item .avatar {
+        flex-basis: 48px;
+    }
 }
 
 .bookmarked-item img {
     border-radius: 2px;
 }
 
-.find-categories .action {
+.find-channels .action {
     flex-basis: 5.4em;
     text-align: right;
 }

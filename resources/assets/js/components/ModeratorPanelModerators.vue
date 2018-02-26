@@ -1,134 +1,147 @@
 <template>
     <section>
-        <h1 class="dotted-title">
+        <h3 class="dotted-title">
 			<span>
 				Add New Moderator
 			</span>
-		</h1>
+        </h3>
 
-        <div class="form-group">
-            <multiselect :value="username" :options="users" @input="updateSelected"
-            @search-change="getUsers" :placeholder="'Search by username...'" :loading="loading"
-            ></multiselect>
-        </div>
+        <el-form label-position="top" label-width="10px">
+            <el-form-item label="Username">
+                <el-select
+                        v-model="username"
+                        filterable
+                        remote
+                        placeholder="Search by username..."
+                        :remote-method="search"
+                        loading-text="Loading..."
+                        :loading="loading">
+                    <el-option
+                            v-for="item in users"
+                            :key="item"
+                            :label="item"
+                            :value="item">
+                    </el-option>
+                </el-select>
+            </el-form-item>
 
-        <div class="form-group">
-            <multiselect :value="role" :options="roles" @input="updateRole"
-                :placeholder="'Select Role...'"
-            ></multiselect>
-        </div>
+            <el-form-item label="Role">
+                <el-radio-group v-model="role">
+                    <el-radio label="administrator" border></el-radio>
+                    <el-radio label="moderator" border></el-radio>
+                </el-radio-group>
+            </el-form-item>
 
-        <div class="form-group">
-            <button type="button" class="v-button v-button--green" :disabled="!role || !username" @click="addModerator">Add</button>
-        </div>
+            <el-form-item>
+                <el-button round type="success" size="medium" v-if="role && username" @click="addModerator" :loading="sending">
+                    Add
+                </el-button>
+            </el-form-item>
+        </el-form>
 
-
-        <h1 class="dotted-title">
+        <h3 class="dotted-title">
 			<span>
 				All Moderators
 			</span>
-		</h1>
+        </h3>
 
-        <moderator v-for="(mod, index) in mods" :list="mod" :key="mod.id"
-        @delete-moderator="mods.splice(index, 1)"></moderator>
+        <moderator v-for="(item, index) in mods" :list="item.user" :role="item.role" :key="item.user.id"
+                   @delete-moderator="mods.splice(index, 1)"></moderator>
     </section>
 </template>
 
 <script>
-    import Multiselect from 'vue-multiselect'
-    import Moderator from '../components/Moderator.vue'
+import Moderator from '../components/Moderator.vue';
 
-    export default {
-        components: { Moderator, Multiselect },
+export default {
+    components: { Moderator },
 
-        mixins: [],
+    data() {
+        return {
+            username: null,
+            users: [],
+            loading: false,
+            sending: false,
+            role: 'moderator',
+            mods: []
+        };
+    },
 
-        data: function () {
-            return {
-                username: null,
-                users: [],
-                loading: false,
-                roles: ['administrator', 'moderator'],
-                role: 'moderator',
-                mods: [],
-            }
-        },
+    created() {
+        this.getMods();
+    },
 
-        props: {
-            //
-        },
+    methods: {
+        getMods() {
+            this.users = [];
 
-        computed: {
-            //
-        },
-
-        created () {
-            this.getMods()
-        },
-
-        mounted () {
-            //
-        },
-
-        methods: {
-            getMods(){
-                axios.post('/moderators', {
-                    category_name: this.$route.params.name
-                }).then((response) => {
-                    this.mods = response.data
+            axios
+                .get('/moderators', {
+                    params: {
+                        channel_name: this.$route.params.name
+                    }
                 })
-            },
+                .then((response) => {
+                    this.mods = response.data.data;
+                });
+        },
 
+        search: _.debounce(function(query) {
+            if (!query.trim()) return;
+            this.loading = true;
 
-            getUsers: _.debounce(function (query) {
-                if (!query) return
-
-                this.loading = true
-
-                axios.get('/users', {
-                	params: {
-	                    username: query,
-            			category: this.$route.params.name
-                	}
-                }).then((response) => {
-                    this.users = response.data
-                    this.loading = false
+            axios
+                .get('/search', {
+                    params: {
+                        type: 'Users',
+                        keyword: query
+                    }
                 })
-            }, 600),
+                .then((response) => {
+                    this.users = _.map(response.data.data, 'username');
+                    this.loading = false;
+                })
+                .catch((error) => {
+                    this.loading = false;
+                });
+        }, 600),
 
+        addModerator() {
+            this.sending = true;
 
-            updateSelected (newSelected) {
-                this.username = newSelected
-            },
-
-            updateRole (newSelected) {
-                this.role = newSelected
-            },
-
-            addModerator(){
-                axios.post('/add-moderator', {
-                    category_name: this.$route.params.name,
+            axios
+                .post('/moderators', {
+                    channel_id: Store.page.channel.temp.id,
                     username: this.username,
                     role: this.role
-                }).then((response) => {
-                    this.username = null
-                    this.role = 'moderator'
-
-                    this.getMods()
                 })
-            }
-        },
+                .then(() => {
+                    this.username = null;
+                    this.role = 'moderator';
 
-        beforeRouteEnter(to, from, next){
-            if (Store.category.name == to.params.name) {
-                // loaded
-                if (Store.administratorAt.indexOf(Store.category.id) != -1) {
-                    next()
-                }
-            } else {
-                // not loaded but let's continue (the server-side is still protecting us!)
-                next()
+                    this.getMods();
+                    this.sending = false;
+                })
+                .catch(() => {
+                    this.sending = false;
+                });
+        }
+    },
+
+    beforeRouteEnter(to, from, next) {
+        if (Store.page.channel.temp.name == to.params.name) {
+            // loaded
+            if (
+                Store.state.administratorAt.indexOf(
+                    Store.page.channel.temp.id
+                ) != -1
+            ) {
+                next();
             }
-        },
-    };
+        } else {
+            // not loaded but let's continue (the server-side is still protecting us!)
+            next();
+        }
+    }
+};
 </script>

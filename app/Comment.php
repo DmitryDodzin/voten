@@ -4,11 +4,10 @@ namespace App;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Laravel\Scout\Searchable;
 
 class Comment extends Model
 {
-    use Bookmarkable, RecordsActivity, SoftDeletes, Searchable;
+    use Bookmarkable, RecordsActivity, SoftDeletes;
 
     protected static $recordEvents = ['created', 'deleted'];
 
@@ -18,7 +17,7 @@ class Comment extends Model
      * @var array
      */
     protected $fillable = [
-        'body', 'upvotes', 'rate', 'downvotes', 'submission_id', 'level', 'parent_id', 'category_id', 'user_id', 'edited_at',
+        'body', 'upvotes', 'rate', 'downvotes', 'submission_id', 'level', 'parent_id', 'channel_id', 'user_id', 'edited_at',
     ];
 
     protected $with = [
@@ -32,8 +31,7 @@ class Comment extends Model
      */
     public function owner()
     {
-        return $this->belongsTo(User::class, 'user_id')
-                    ->select(['id', 'username', 'avatar']);
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     /**
@@ -87,19 +85,5 @@ class Comment extends Model
     public function parent()
     {
         return $this->belongsTo(self::class, 'parent_id');
-    }
-
-    /**
-     * Get the indexable data array for the model.
-     *
-     * @return array
-     */
-    public function toSearchableArray()
-    {
-        return [
-            'id'   => $this->id,
-            'body' => $this->body,
-            'rate' => $this->rate,
-        ];
     }
 }

@@ -125,10 +125,10 @@
                             Channels
                         </td>
                         <td>
-                            {{ $categoriesToday }}
+                            {{ $channelsToday }}
                         </td>
                         <td>
-                            {{ $categoriesTotal }}
+                            {{ $channelsTotal }}
                         </td>
                     </tr>
 
@@ -229,7 +229,7 @@
                                 </a>
                             </td>
                             <td>
-                                <a href="/{{ '@' . $activity->owner->username }}">
+                                <a href="/backend/users/{{ $activity->owner->username }}">
                                     <img width="30" class="margin-right-half" src="{{ $activity->owner->avatar }}"
                                          alt="{{ $activity->owner->username }}">
                                 </a>

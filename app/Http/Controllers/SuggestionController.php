@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Category;
+use App\Channel;
 use App\Filters;
+use App\Http\Resources\ChannelResource;
 use App\Suggested;
-use App\Traits\CachableCategory;
+use App\Traits\CachableChannel;
 use App\Traits\CachableUser;
 use Auth;
 use Illuminate\Http\Request;
@@ -13,77 +14,77 @@ use Illuminate\Support\Facades\Cache;
 
 class SuggestionController extends Controller
 {
-    use CachableUser, CachableCategory, Filters;
+    use CachableUser, CachableChannel, Filters;
 
     public function __construct()
     {
-        $this->middleware('auth', ['except' => ['category']]);
+        $this->middleware('voten-administrator', ['except' => ['channel', 'discover']]);
     }
 
     /**
-     * Returns the suggested category.
+     * Returns the suggested channel.
      *
-     * @return \Illuminate\Support\Collection $category
+     * @return \Illuminate\Support\Collection $channel
      */
-    public function category()
+    public function channel()
     {
         try {
-            if (Auth::check()) {
-                return Suggested::whereNotIn('category_id', $this->subscriptions())->inRandomOrder()->firstOrFail()->category;
-            }
-
-            return Suggested::where('z_index', '>', 6)->inRandomOrder()->firstOrFail()->category;
+            return new ChannelResource(
+                Suggested::whereNotIn('channel_id', $this->subscriptions())->inRandomOrder()->firstOrFail()->channel
+            );
         } catch (\Exception $e) {
-            return 'null';
+            return res(200, 'No channel to suggest at this time.');
         }
     }
 
     /**
-     * Returnes a collection of suggested categories for the auth user.
+     * Returnes a collection of suggested channels for the auth user.
      *
      * @param \Illuminate\Http\Request $request
      *
      * @return \Illuminate\Support\Collection
      */
-    public function findCategories(Request $request)
+    public function discover(Request $request)
     {
         // default
         if (!$request->filter && !$request->order_by) {
-            $defaultCategories = ($request->exclude_subscribeds == 'true') ? Suggested::whereNotIn('category_id', $this->subscriptions())
+            $defaultChannels = ($request->exclude_subscribeds == 'true') ? Suggested::whereNotIn('channel_id', $this->subscriptions())
                 ->orderBy('z_index', 'desc')->simplePaginate(20) : Suggested::orderBy('z_index', 'desc')->simplePaginate(20);
 
-            $defaultCategories->setCollection($defaultCategories->pluck('category'));
+            $defaultChannels->setCollection($defaultChannels->pluck('channel'));
 
-            return $defaultCategories;
+            return ChannelResource::collection($defaultChannels);
         }
 
         // searched
         if ($request->filter) {
-            $categories = Category::search($request->filter)->take(20)->get();
+            $channels = Channel::search($request->filter)->paginate(20);
 
-            return ($request->exclude_subscribeds == 'true') ? $this->noSubscribedFilter($categories) : $categories;
+            return ChannelResource::collection(($request->exclude_subscribeds == 'true') ? $this->noSubscribedFilter($channels) : $channels);
         }
 
         // sorted by an option
-        $categories = (new Category())->newQuery();
+        $channels = (new Channel())->newQuery();
 
-        if ($request->order_by == 'new') {
-            $categories->orderBy('id', 'desc');
-        } elseif ($request->order_by == 'subscribers') {
-            $categories->orderBy('subscribers', 'desc');
-        } elseif ($request->order_by == 'activity') {
-            $categories->withCount('submissions')->orderBy('submissions_count', 'desc');
+        if ($request->order_by == 'Newest') {
+            $channels->orderBy('id', 'desc');
+        } elseif ($request->order_by == 'Oldest') {
+            $channels->orderBy('id', 'asc');
+        } elseif ($request->order_by == 'Subscribers') {
+            $channels->orderBy('subscribers', 'desc');
+        } elseif ($request->order_by == 'Activity') {
+            $channels->withCount('submissions')->orderBy('submissions_count', 'desc');
         }
 
         if ($request->exclude_subscribeds == 'true') {
-            $categories->whereNotIn('id', $this->subscriptions());
+            $channels->whereNotIn('id', $this->subscriptions());
         }
 
-        return $categories->simplePaginate(20);
+        return ChannelResource::collection($channels->simplePaginate(20));
     }
 
     /**
-     * stores a new suggested category record.
+     * stores a new suggested channel record.
      *
      * @param \Illuminate\Http\Request $request
      *
@@ -92,23 +93,21 @@ class SuggestionController extends Controller
     public function store(Request $request)
     {
         $this->validate($request, [
-            'category_name' => 'required',
+            'channel_name'  => 'required',
             'z_index'       => 'required|integer',
         ]);
 
-        abort_unless($this->mustBeVotenAdministrator(), 403);
-
-        $category = $this->getCategoryByName($request->category_name);
+        $channel = $this->getChannelByName($request->channel_name);
 
         $suggested = new Suggested([
             'z_index'     => $request->z_index,
             'group'       => $request->group,
-            'category_id' => $category->id,
+            'channel_id'  => $channel->id,
         ]);
 
         $suggested->save();
 
-        Cache::forget('default-categories-ids');
+        Cache::forget('default-channels-ids');
 
         return Suggested::findOrFail($suggested->id);
     }
@@ -120,8 +119,6 @@ class SuggestionController extends Controller
      */
     public function adminIndex()
     {
-        abort_unless($this->mustBeVotenAdministrator(), 403);
-
         return Suggested::all();
     }
 
@@ -130,18 +127,12 @@ class SuggestionController extends Controller
      *
      * @return response
      */
-    public function destroy(Request $request)
+    public function destroy(Suggested $suggested)
     {
-        $this->validate($request, [
-            'id' => 'required|integer',
-        ]);
+        $suggested->delete();
 
-        abort_unless($this->mustBeVotenAdministrator(), 403);
+        Cache::forget('default-channels-ids');
 
-        Suggested::findOrFail($request->id)->delete();
-
-        Cache::forget('default-categories-ids');
-
-        return response('Channel is no longer suggested', 200);
+        return res(200, 'Channel is no longer suggested. ');
     }
 }

@@ -2,10 +2,11 @@
 
 namespace App\Notifications;
 
-use App\Category;
+use App\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Illuminate\Queue\SerializesModels;
@@ -15,7 +16,7 @@ class BecameModerator extends Notification implements ShouldBroadcast
     use Queueable;
     use InteractsWithSockets, SerializesModels;
 
-    protected $category;
+    protected $channel;
     protected $role;
 
     /**
@@ -23,9 +24,9 @@ class BecameModerator extends Notification implements ShouldBroadcast
      *
      * @return void
      */
-    public function __construct(Category $category, $role)
+    public function __construct(Channel $channel, $role)
     {
-        $this->category = $category;
+        $this->channel = $channel;
         $this->role = $role;
     }
 
@@ -66,12 +67,28 @@ class BecameModerator extends Notification implements ShouldBroadcast
     public function toArray($notifiable)
     {
         return [
-            'url'      => '/c/'.$this->category->name.'/mod',
-            'name'     => $this->category->name,
-            'avatar'   => $this->category->avatar,
-            'body'     => 'You are now moderating '.'#'.$this->category->name,
-            'category' => $this->category,
+            'url'      => '/c/'.$this->channel->name.'/mod',
+            'name'     => $this->channel->name,
+            'avatar'   => $this->channel->avatar,
+            'body'     => 'You are now moderating '.'#'.$this->channel->name,
+            'channel'  => $this->channel,
             'role'     => $this->role,
         ];
+    }
+
+    /**
+     * Get the broadcastable representation of the notification.
+     *
+     * @param mixed $notifiable
+     *
+     * @return BroadcastMessage
+     */
+    public function toBroadcast($notifiable)
+    {
+        return new BroadcastMessage([
+            'data'       => $this->toArray($notifiable),
+            'created_at' => now(),
+            'read_at'    => null,
+        ]);
     }
 }

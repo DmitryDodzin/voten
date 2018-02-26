@@ -1,8 +1,8 @@
-.category-label {
+.channel-label {
     color: #777;
 }
 
-.category-label i {
+.channel-label i {
     font-size: 0.8em;
 }
 
@@ -55,7 +55,7 @@
 
 .profile-post .ui.top.right.pointing.dropdown > .menu {
     right: -0.6em;
-    padding: 0.5em;
+    padding: 0.5em 4px;
 }
 
 .dropdown form,
@@ -117,18 +117,18 @@
     color: $red-color;
 }
 
-.category-hashtags {
+.channel-hashtags {
     padding: 0;
 }
 
-.category-hashtags li {
+.channel-hashtags li {
     list-style: none;
     display: inline-block;
     margin-top: 15px;
     margin-right: 10px;
 }
 
-.category-hashtags li a {
+.channel-hashtags li a {
     color: #999;
     border: 2px solid #999;
     padding: 5px;
@@ -137,7 +137,7 @@
     text-decoration: none;
 }
 
-.category-hashtags li a:hover {
+.channel-hashtags li a:hover {
     color: #777;
     border-color: #777;
     transition: 0.2 s;
@@ -159,11 +159,6 @@
 
 .card-link-box img {
     border-bottom: 1px solid #e5e5e5;
-}
-
-.img .profile-post-content img {
-    cursor: zoom-in;
-    max-height: 400px;
 }
 
 .gif .profile-post-content,
@@ -230,30 +225,16 @@
     display: flex;
     align-items: center;
     position: relative;
-}
 
-.side-voting {
-    display: flex;
-    flex-direction: column;
-    margin-right: 1em;
-    align-items: center;
-    position: absolute;
-    left: -1.5em;
-    top: 59%;
-    margin-top: -45px;
-    opacity: 0.9;
-}
-
-.submission-wrapper:hover {
-    .side-voting {
-        opacity: 1;
+    .el-dropdown i {
+        font-size: 20px;
     }
 }
 
 .small-thumbnail {
     border: 1px solid #e3e3e3;
 
-	background-size: cover;
+    background-size: cover;
     background-position: center center;
     background-repeat: no-repeat;
     border-radius: 0.2rem;
@@ -295,20 +276,26 @@
 }
 
 .submission-title {
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 600;
 }
 
 .side-vote-icon {
-	font-size: 16px;
+    cursor: pointer;
+    font-size: 16px;
 }
 
 .link-list-info a {
     color: #343434;
+    display: inline-block;
+
+    // &:hover {
+    //     text-decoration: underline;
+    // }
 }
 
 .index-submission-footer {
-	margin-top: 1em;
+    margin-top: 1em;
     color: #999;
     font-size: 13px;
 }
@@ -317,9 +304,15 @@
     font-size: 17px;
 }
 
-.index-submission-footer a {
-	color: #999 !important;
-	font-weight: bold;
+.index-submission-footer {
+    a {
+        color: #999 !important;
+        font-weight: bold;
+    }
+
+    .el-dropdown i {
+        color: #999999;
+    }
 }
 
 .submisison-small-thumbnail {
@@ -327,7 +320,7 @@
 }
 
 .comments-icon {
-	font-size: 15px;
+    font-size: 15px;
     display: inline-flex;
 }
 
@@ -339,20 +332,20 @@
 }
 
 .submission-header {
-	display: flex;
+    display: flex;
     align-items: center;
     border-bottom: solid 1px #d8e2e7;
-    padding: 0em .5em .7em .5em;
-	justify-content: space-between;
+    padding: 0.7em 0.5em 0.7em 0.5em;
+    justify-content: space-between;
 }
 
 .submission-submitter-wrapper {
-	display: flex;
+    display: flex;
     align-items: center;
 }
 
 .submission-submitter {
-	display: flex;
+    display: flex;
     flex-direction: column;
 }
 
@@ -362,33 +355,56 @@
 }
 
 .submission-header .username {
-	color: #333;
-	font-weight: bold;
-	font-size: 14px;
+    color: #333;
+    font-weight: bold;
+    font-size: 14px;
 }
 
 .submission-header .username:hover {
-	text-decoration: underline;
+    text-decoration: underline;
 }
 
 .submission-header-container {
-	display: flex;
-	width: 100%;
-	justify-content: space-between;
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
 }
 
 @media (max-width: 768px) {
-	.submission-item.submission-wrapper {
-		border-bottom: 1px solid #d6d6d6;
-	}
+    .submission-item.submission-wrapper {
+        border-bottom: 1px solid #d6d6d6;
+    }
 
-	.mobile-submission-item-action {
-	    margin-top: .3em;
+    .mobile-submission-item-action {
+        margin-top: 0.3em;
         font-size: 11px;
-	}
+    }
 
-	.index-submission-footer {
-		border-top: 2px dashed #d6d6d6;
-    	padding-top: 0.5em;
-	}
+    .index-submission-footer {
+        border-top: 2px dashed #d6d6d6;
+        padding-top: 0.5em;
+    }
+}
+
+.submission-item {
+    display: flex;
+
+    .title {
+        display: inline-block;
+        font-weight: bold;
+        margin: 0;
+    }
+}
+
+.side-voting {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    opacity: 0.9;
+}
+
+.submission-wrapper:hover {
+    .side-voting {
+        opacity: 1;
+    }
 }

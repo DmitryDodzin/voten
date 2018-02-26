@@ -1,5 +1,5 @@
 <template>
-	<div>
+	<div class="home-wrapper">
 		<admin-panel-header></admin-panel-header>
 
 		<router-view></router-view>
@@ -7,43 +7,27 @@
 </template>
 
 <script>
-	import AdminPanelHeader from '../components/AdminPanelHeader.vue'
+import AdminPanelHeader from '../components/AdminPanelHeader.vue';
 
-    export default {
-        components: {
-        	AdminPanelHeader
-        },
+export default {
+    components: {
+        AdminPanelHeader
+    },
 
-        data: function () {
-            return {
-                statistics: []
+    data() {
+        return {
+            statistics: []
+        };
+    },
+
+    beforeRouteEnter(to, from, next) {
+        axios.post('/admin/check').then((response) => {
+            if (response.data == true) {
+                next();
             }
-        },
 
-        created () {
-            this.getStatistics()
-        },
-
-        mounted () {
-			this.$nextTick(function () {
-				this.$root.loadSemanticTooltip()
-			})
-        },
-
-        methods: {
-            getStatistics () {
-
-            },
-        },
-
-        beforeRouteEnter(to, from, next){
-        	axios.post('/big-daddy').then((response) => {
-                if (response.data == true) {
-                	next();
-                }
-
-                next(false);
-            })
-        },
-    };
+            next(false);
+        });
+    }
+};
 </script>

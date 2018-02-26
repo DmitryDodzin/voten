@@ -1,107 +1,111 @@
 <?php
 
-Route::group(['middleware' => 'auth:api'], function () {
+Route::group(['middleware' => ['auth:api']], function () {
     // Administrator routes
-    Route::post('/big-daddy', 'AdminController@isAdministrator');
-    Route::post('/admin/users', 'AdminController@indexUsers');
-    Route::post('/admin/comments', 'AdminController@comments');
-    Route::post('/admin/channels', 'AdminController@categories');
-    Route::post('/admin/submissions', 'AdminController@submissions');
-    Route::post('/admin/search-users', 'AdminController@searchUsers');
-    Route::post('/admin/suggesteds', 'SuggestionController@adminIndex');
-    Route::get('/admin/get-categories', 'AdminController@getCategories');
-    Route::post('/admin/suggested/destroy', 'SuggestionController@destroy');
-    Route::get('/admin/reported-comments', 'AdminController@reportedComments');
-    Route::get('/admin/reported-submissions', 'AdminController@reportedSubmissions');
+    Route::post('/admin/check', 'AdminController@isAdministrator'); // check 
+    Route::get('/admin/users', 'AdminController@indexUsers'); // check 
+    Route::get('/admin/comments', 'AdminController@indexComments'); // check 
+    Route::get('/admin/channels', 'AdminController@indexChannels'); // check 
+    Route::get('/admin/submissions', 'AdminController@indexSubmissions'); // check 
+    Route::get('/admin/suggesteds', 'SuggestionController@adminIndex'); // check 
+    Route::post('/admin/suggesteds', 'SuggestionController@store'); // check 
+    Route::delete('/admin/suggesteds/{suggested}', 'SuggestionController@destroy'); // check 
+    Route::get('/admin/reports/comments', 'AdminController@reportedComments'); // check 
+    Route::get('/admin/reports/submissions', 'AdminController@reportedSubmissions'); // check 
+    Route::get('/admin/activities', 'AdminController@activities'); // check 
+    Route::get('/admin/echo', 'AdminController@echoServer'); // check 
 
     // feedback
-    Route::post('/feedback', 'FeedbacksController@store');
-    Route::post('/feedback/delete', 'FeedbacksController@destroy');
-
-    // help
-    Route::post('/new-help', 'HelpController@store');
-    Route::post('/edit-help', 'HelpController@patch');
-    Route::post('/help-index', 'HelpController@index');
-    Route::post('/delete-help', 'HelpController@destroy');
+    Route::get('/feedbacks/{feedback}', 'FeedbacksController@get')->middleware('voten-administrator'); // check
+    Route::get('/feedbacks', 'FeedbacksController@index')->middleware('voten-administrator'); // check
+    Route::post('/feedbacks', 'FeedbacksController@store')->middleware('shaddow-ban'); // check
+    Route::delete('/feedbacks/{feedback}', 'FeedbacksController@destroy')->middleware('voten-administrator'); // check
 
     // Find Channels
-    Route::get('/find-categories', 'SuggestionController@findCategories');
-    Route::post('/store-suggested-channel', 'SuggestionController@store');
+    Route::get('/channels/discover', 'SuggestionController@discover'); // check 
 
     // User
-    Route::post('/auth', 'UserController@getAuth');
-    Route::get('/fill-basic-store', 'StoreController@index');
-    Route::post('/delete-my-account', 'UserController@destroy');
-    Route::post('/destroy-comment', 'CommentController@destroy');
-    Route::post('/destroy-submission', 'SubmissionController@destroy');
-    Route::post('/update-profile', 'UserSettingsController@updateProfile');
-    Route::post('/update-account', 'UserSettingsController@updateAccount');
-    Route::post('/update-email', 'UserSettingsController@updateEmail');
-    Route::post('/update-password', 'UserSettingsController@updatePassword');
-    Route::post('/upvoted-submissions', 'UserController@upVotedSubmissions');
-    Route::post('/update-home-feed', 'UserSettingsController@updateHomeFeed');
-    Route::post('/downvoted-submissions', 'UserController@downVotedSubmissions');
+    Route::get('/fill-basic-store', 'StoreController@index');  
+    Route::delete('/users', 'UserController@destroyAsAuth'); // check 
+    Route::delete('/admin/users', 'UserController@destroyAsVotenAdministrator')->middleware('voten-administrator');
+    Route::patch('/users/profile', 'UserSettingsController@profile');
+    Route::patch('/users/account', 'UserSettingsController@account');
+    Route::patch('/users/email', 'UserSettingsController@email');
+    Route::patch('/users/password', 'UserSettingsController@password');
+    Route::get('/users/submissions/upvoted', 'UserController@upVotedSubmissions');
+    Route::get('/users/submissions/downvoted', 'UserController@downVotedSubmissions');
+    Route::post('/email/verify/resend', 'Auth\VerificationController@resendVerifyEmailAddress');
+    Route::post('/clientside-settings', 'ClientsideSettingsController@store');
+    Route::get('/clientside-settings', 'ClientsideSettingsController@get');
 
     // submission
-    Route::post('/submit', 'SubmissionController@store');
-    Route::post('/patch-text-submission', 'SubmissionController@patchTextSubmission');
-    Route::post('/hide-submission', 'SubmissionController@hide');
-    Route::get('/fetch-url-title', 'SubmissionController@getTitleAPI');
+    Route::post('/submissions', 'SubmissionController@store')->middleware('shaddow-ban');
+    Route::patch('/submissions/{submission}', 'SubmissionController@patchTextSubmission');
+    Route::delete('/submissions/{submission}', 'SubmissionController@destroy');
+    Route::post('/hide-submission', 'BlockSubmissionsController@store');
+    Route::get('/submissions/title', 'SubmissionController@getTitleAPI');
     Route::post('/mark-submission-sfw', 'NsfwController@markAsSFW');
 
     Route::post('/mark-submission-nsfw', 'NsfwController@markAsNSFW');
 
-    Route::post('/remove-thumbnail', 'SubmissionController@removeThumbnail');
+    Route::delete('/submissions/{submission}/thumbnail', 'SubmissionController@removeThumbnail');
 
-    Route::get('/notifications', 'NotificationsController@unreadIndex');
+    Route::get('/notifications/unseen', 'NotificationsController@unreadIndex');
 
     // voting
-    Route::post('/upvote-comment', 'CommentVotesController@upVote');
-    Route::post('/downvote-comment', 'CommentVotesController@downVote');
-    Route::post('/upvote-submission', 'SubmissionVotesController@upVote');
-    Route::post('/downvote-submission', 'SubmissionVotesController@downVote');
+    Route::post('/upvote-comment', 'CommentVotesController@upVote')->middleware('shaddow-ban');
+    Route::post('/downvote-comment', 'CommentVotesController@downVote')->middleware('shaddow-ban');
+    Route::post('/upvote-submission', 'SubmissionVotesController@upVote')->middleware('shaddow-ban');
+    Route::post('/downvote-submission', 'SubmissionVotesController@downVote')->middleware('shaddow-ban');
 
     // bookmarks
     Route::post('/bookmark-user', 'BookmarksController@bookmarkUser');
     Route::post('/bookmark-comment', 'BookmarksController@bookmarkComment');
-    Route::post('/bookmark-category', 'BookmarksController@bookmarkCategory');
+    Route::post('/bookmark-channel', 'BookmarksController@bookmarkChannel');
     Route::get('/bookmarked-users', 'BookmarksController@getBookmarkedUsers');
     Route::post('/bookmark-submission', 'BookmarksController@bookmarkSubmission');
     Route::get('/bookmarked-comments', 'BookmarksController@getBookmarkedComments');
-    Route::get('/bookmarked-categories', 'BookmarksController@getBookmarkedCategories');
+    Route::get('/bookmarked-channels', 'BookmarksController@getBookmarkedChannels');
     Route::get('/bookmarked-submissions', 'BookmarksController@getBookmarkedSubmissions');
 
     // Comment
-    Route::post('/comment', 'CommentController@store');
-    Route::post('/edit-comment', 'CommentController@patch');
-    Route::get('/submission-comments', 'CommentController@index');
-    Route::get('/search-mentionables', 'SearchController@mentions');
+    Route::post('/comments', 'CommentController@store')->middleware('shaddow-ban'); // check
+    Route::patch('/comments/{comment}', 'CommentController@patch'); // check
+    Route::delete('/comments/{comment}', 'CommentController@destroy'); // check
 
-    // Category
-    Route::post('/channel', 'CategoryController@store');
-    Route::post('/category-patch', 'CategoryController@patch');
-    Route::get('/get-categories', 'CategoryController@getCategories');
-    Route::get('/subscribed-categories', 'SubscribeController@index');
+    // Channel
+    Route::post('/channels', 'ChannelController@store')->middleware('shaddow-ban');
+    Route::patch('/channels', 'ChannelController@patch');
+    Route::post('/channel-block', 'BlockChannelsController@store');
+    Route::delete('/channel-unblock', 'BlockChannelsController@destroy');
+    Route::get('/get-channels', 'ChannelController@getChannels');
+    Route::get('/subscribed-channels', 'SubscribeController@index');
 
     // rule
-    Route::post('/create-rule', 'RulesController@store');
-    Route::post('/patch-rule', 'RulesController@patch');
-    Route::post('/destroy-rule', 'RulesController@destroy');
+    Route::post('/channels/rules', 'RulesController@store');
+    Route::patch('/channels/rules', 'RulesController@patch');
+    Route::delete('/channels/rules', 'RulesController@destroy');
 
     // block domain
-    Route::post('/block-domain', 'BlockDomainController@store');
-    Route::post('/blocked-domains', 'BlockDomainController@index');
-    Route::delete('/block-domain/destroy', 'BlockDomainController@destroy');
+    Route::get('/channels/domains/block', 'BlockDomainController@indexAsChannelModerator')->middleware('moderator');
+    Route::post('/channels/domains/block', 'BlockDomainController@storeAsChannelModerator')->middleware('moderator');
+    Route::delete('/channels/domains/block', 'BlockDomainController@destroyAsChannelModerator')->middleware('moderator');
+    // (admin)
+    Route::get('/admin/domains/block', 'BlockDomainController@indexAsVotenAdministrator')->middleware('voten-administrator');
+    Route::post('/admin/domains/block', 'BlockDomainController@storeAsVotenAdministrator')->middleware('voten-administrator');
+    Route::delete('/admin/domains/block', 'BlockDomainController@destroyAsVotenAdministrator')->middleware('voten-administrator');
 
     // ban user
-    Route::post('/ban-user', 'BanController@store');
-    Route::post('/banned-users', 'BanController@index');
-    Route::delete('/ban-user/destroy', 'BanController@destroy');
+    Route::post('/channels/users/banned', 'BanController@storeAsChannelModerator')->middleware('moderator');
+    Route::get('/channels/users/banned', 'BanController@indexasChannelModerator')->middleware('moderator');
+    Route::delete('/channels/users/banned', 'BanController@destroyAsChannelModerator')->middleware('moderator');
+    // (admin)
+    Route::post('/admin/users/banned', 'BanController@storeAsVotenAdministrator')->middleware('voten-administrator');
+    Route::get('/admin/users/banned', 'BanController@indexAsVotenAdministrator')->middleware('voten-administrator');
+    Route::delete('/admin/users/banned', 'BanController@destroyAsVotenAdministrator')->middleware('voten-administrator');
 
     // moderation
-    Route::post('/moderators', 'ModeratorController@index');
-    Route::get('/users', 'ModeratorController@getUsers');
-    Route::post('/add-moderator', 'ModeratorController@store');
+    Route::post('/moderators', 'ModeratorController@store');
     Route::post('/destroy-moderator', 'ModeratorController@destroy');
     Route::post('/approve-comment', 'ModeratorController@approveComment');
     Route::post('/approve-submission', 'ModeratorController@approveSubmission');
@@ -109,64 +113,81 @@ Route::group(['middleware' => 'auth:api'], function () {
     Route::post('/disapprove-submission', 'ModeratorController@disapproveSubmission');
 
     // messages
-    Route::post('/message', 'MessagesController@store');
-    Route::get('/contacts', 'MessagesController@getContacts');
-    Route::get('/messages', 'MessagesController@getMessages');
-    Route::post('/message-read', 'MessagesController@markAsRead');
-    Route::post('/block-contact', 'MessagesController@blockUser');
-    Route::get('/contact-info', 'MessagesController@contactInfo');
-    Route::post('/search-contacts', 'MessagesController@searchContact');
-    Route::post('/delete-messages', 'MessagesController@destroyMessages');
-    Route::post('/leave-conversation', 'MessagesController@leaveConversation');
-    Route::post('/conversation-read', 'MessagesController@broadcastConversaionAsRead');
+    Route::post('/messages', 'MessagesController@store')->middleware('shaddow-ban');
+    Route::get('/messages', 'MessagesController@index');
+    Route::delete('/messages', 'MessagesController@destroy');
+    Route::post('/messages/read', 'MessagesController@markAsRead');
+
+    // conversations
+    Route::get('/conversations', 'ConversationsController@index');
+    Route::delete('/conversations', 'ConversationsController@destroy');
+    Route::post('/conversations/read', 'ConversationsController@broadcastConversaionAsRead');
+    Route::post('/conversations/block', 'ConversationsController@block');
+    Route::get('/conversations/search', 'SearchController@conversations');
 
     // Photo uploading
-    Route::post('/user-avatar-crop', 'PhotoController@cropUserAvatar');
-    Route::post('/upload-temp-avatar', 'PhotoController@uploadTempAvatar');
-    Route::post('/category-avatar', 'PhotoController@categoryAvatarAPI');
-    Route::post('/category-avatar-crop', 'PhotoController@cropCategoryAvatar');
+    Route::post('/channel/avatar', 'PhotoController@channelAvatar');
+    Route::post('/user/avatar', 'PhotoController@userAvatar');
+    Route::post('/photo', 'PhotoController@store')->middleware('shaddow-ban');
+    Route::post('/gif', 'GifController@store')->middleware('shaddow-ban');
 
     // notification
-    Route::post('/all-notifications', 'NotificationsController@readIndex');
-    Route::post('/mark-notifications-read', 'NotificationsController@markAsRead');
+    Route::get('/notifications', 'NotificationsController@readIndex');
+    Route::post('/notifications/seen', 'NotificationsController@markAsRead');
 
     // subscribe
-    Route::post('/subscribe', 'SubscribeController@subscribeToggle');
+    Route::post('/subscribe', 'SubscribeController@subscribeToggle')->middleware('shaddow-ban');
     Route::get('/is-subscribed', 'SubscribeController@isSubscribed');
 
     // report
-    Route::post('/report-comment', 'ReportsController@comment');
-    Route::post('/report-submission', 'ReportsController@submission');
-    Route::post('/reported-comments', 'ReportsController@reportedComments');
-    Route::post('/reported-submissions', 'ReportsController@reportedSubmissions');
+    Route::post('/comments/reports', 'ReportCommentsController@store')->middleware('shaddow-ban');
+    Route::get('/comments/reports', 'ReportCommentsController@index');
+    Route::post('/submissions/reports', 'ReportSubmissionsController@store')->middleware('shaddow-ban');
+    Route::get('/submissions/reports', 'ReportSubmissionsController@index');
 
     Route::post('/announcement/seen', 'AnnouncementController@seen');
-});
 
-Route::group(['prefix' => 'auth', 'middleware' => 'auth:api'], function () {
-    Route::get('/home', 'HomeController@feed');
-    Route::get('/category-submissions', 'CategoryController@submissions');
-    Route::get('/sidebar-categories', 'StoreController@sidebarCategories');
-    Route::get('/suggested-category', 'SuggestionController@category');
+    Route::get('/suggested-channel', 'SuggestionController@channel');
+
+    ////////////////////////////////////////////////////////////////////////
+    // Below routes have a twin route prefixed with "guest"
+    ////////////////////////////////////////////////////////////////////////
+    Route::get('/users', 'UserController@get');
+    Route::get('/feed', 'HomeController@feed');
+    Route::get('/channels/submissions', 'ChannelController@submissions');
     Route::get('/announcement', 'AnnouncementController@get');
+
+    Route::get('/submissions', 'SubmissionController@get');
+    Route::get('/submissions/{submission}/comments', 'CommentController@index');
+    Route::get('/moderators', 'ModeratorController@index');
+    Route::get('/channels/rules', 'RulesController@index');
+    Route::get('/emojis', 'EmojiController@index');
+    Route::get('/submissions/photos', 'SubmissionController@getPhotos');
+    Route::get('/search', 'SearchController@index');
+    Route::get('/channels', 'ChannelController@get');
+    Route::get('/users/submissions', 'UserController@submissions');
+    Route::get('/users/comments', 'UserController@comments');
+    Route::get('/submissions/comments', 'CommentController@index');
 });
 
-// For both logged in users and guests
-Route::get('/home', 'HomeController@feed');
-Route::get('/get-submission', 'SubmissionController@getBySlug');
-Route::get('/get-submission-by-id', 'SubmissionController@getById');
-Route::get('/submission-comments', 'CommentController@index');
-Route::get('/category-moderators', 'CategoryController@moderators');
-Route::get('/rules', 'RulesController@index');
-Route::get('/emoji-list', 'EmojiController@index');
-Route::get('/submission-photos', 'SubmissionController@getPhotos');
-Route::get('/search', 'SearchController@index');
-Route::get('/home', 'HomeController@feed');
-Route::get('/category-submissions', 'CategoryController@submissions');
-Route::get('/get-category-store', 'CategoryController@fillStore');
-Route::get('/suggested-category', 'SuggestionController@category');
-Route::get('/get-user-store', 'UserController@fillStore');
-Route::get('/user-submissions', 'UserController@submissions');
-Route::get('/user-comments', 'UserController@comments');
-Route::get('/sidebar-categories', 'StoreController@sidebarCategories');
-Route::get('/announcement', 'AnnouncementController@get');
+////////////////////////////////////////////////////////////////////////
+// Below routes are the twin routes for guests
+////////////////////////////////////////////////////////////////////////
+Route::prefix('guest')->group(function () {
+    Route::get('/users', 'UserController@get');
+    Route::get('/feed', 'HomeController@feed');
+    Route::get('/channels/submissions', 'ChannelController@submissions');
+    Route::get('/announcement', 'AnnouncementController@get');
+
+    Route::get('/submissions', 'SubmissionController@get');
+    Route::get('/submissions/{submission}/comments', 'CommentController@index');
+    Route::get('/moderators', 'ModeratorController@index');
+    Route::get('/channels/rules', 'RulesController@index');
+    Route::get('/emojis', 'EmojiController@index');
+    Route::get('/submissions/photos', 'SubmissionController@getPhotos');
+    Route::get('/search', 'SearchController@index');
+    Route::get('/channels', 'ChannelController@get');
+    Route::get('/users/submissions', 'UserController@submissions');
+    Route::get('/users/comments', 'UserController@comments');
+    Route::get('/submissions/comments', 'CommentController@index');
+});

@@ -7,9 +7,9 @@ use Intervention\Image\ImageManagerStatic as Image;
 
 trait PhotoTools
 {
-    protected function ftpAddress()
+    protected function webAddress()
     {
-        return config('filesystems.disks.ftp.cdn_url');
+        return config('filesystems.cdn_url');
     }
 
     /**
@@ -24,7 +24,7 @@ trait PhotoTools
      */
     protected function createThumbnail($url, $width, $height, $folder = 'submissions/img/thumbs')
     {
-        $filename = time().str_random(7).'.jpg';
+        $filename = time().str_random(16).'.jpg';
         $image = Image::make($url);
 
         if ($image->width() > 1200) {
@@ -40,7 +40,7 @@ trait PhotoTools
         $image->encode();
         Storage::put($folder.'/'.$filename, $image);
 
-        return $this->ftpAddress().$folder.'/'.$filename;
+        return $this->webAddress().$folder.'/'.$filename;
     }
 
     /**
@@ -57,7 +57,7 @@ trait PhotoTools
      */
     protected function cropImg($url, $width, $height, $x, $y, $folder = 'users/avatars')
     {
-        $filename = time().str_random(7).'.png';
+        $filename = time().str_random(16).'.png';
         $image = Image::make($url);
         $image = $image->crop($width, $height, $x, $y);
 
@@ -72,7 +72,7 @@ trait PhotoTools
 
         Storage::put($folder.'/'.$filename, $image);
 
-        return $this->ftpAddress().$folder.'/'.$filename;
+        return $this->webAddress().$folder.'/'.$filename;
     }
 
     /**
@@ -87,7 +87,7 @@ trait PhotoTools
      */
     protected function uploadImg($image, $folder = 'submissions/img')
     {
-        $filename = time().str_random(7).'.jpg';
+        $filename = time().str_random(16).'.jpg';
         $image = Image::make($image->getRealPath());
 
         if (!$image->filesize()) {
@@ -102,7 +102,7 @@ trait PhotoTools
 
         Storage::put($folder.'/'.$filename, $image);
 
-        return $this->ftpAddress().$folder.'/'.$filename;
+        return $this->webAddress().$folder.'/'.$filename;
     }
 
     /**
@@ -115,14 +115,14 @@ trait PhotoTools
      */
     protected function uploadImgPNG($image, $folder = 'submissions/img')
     {
-        $filename = time().str_random(7).'.png';
+        $filename = time().str_random(16).'.png';
         $image = Image::make($image->getRealPath());
 
         $image->encode('png');
 
         Storage::put($folder.'/'.$filename, $image);
 
-        return $this->ftpAddress().$folder.'/'.$filename;
+        return $this->webAddress().$folder.'/'.$filename;
     }
 
     /**
@@ -135,7 +135,7 @@ trait PhotoTools
      */
     protected function downloadImg($url, $folder = 'submissions/link')
     {
-        $filename = time().str_random(7).'.jpg';
+        $filename = time().str_random(16).'.jpg';
         $image = Image::make($url);
 
         if ($image->filesize() > 300000) { // 300kb
@@ -146,6 +146,6 @@ trait PhotoTools
 
         Storage::put($folder.'/'.$filename, $image);
 
-        return $this->ftpAddress().$folder.'/'.$filename;
+        return $this->webAddress().$folder.'/'.$filename;
     }
 }

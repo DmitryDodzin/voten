@@ -1,166 +1,246 @@
 <template>
-    <section>
-        <h3 class="dotted-title">
-            <span>
-                My Public Profile
-            </span>
-        </h3>
+	<section>
+		<h3 class="dotted-title">
+			<span>
+				Avatar
+			</span>
+		</h3>
 
-        <div class="v-status v-status--error" v-if="customError">
-            {{ customError }}
-        </div>
+		<div class="form-group">
+			<div class="flex-space">
+				<div>
+					<el-button round class="el-button v-button--upload"
+					           plain
+                               :icon="avatar.uploading ? 'el-icon-loading' : 'el-icon-upload'">
+						{{ avatar.uploading ? 'Uploading...' : 'Click To Browse'}}
 
-        <div class="form-group">
-            <label for="color" class="form-label">Cover Color:</label>
+						<input class="v-button"
+						       type="file"
+						       @change="uploadAvatar" />
+					</el-button>
 
-            <multiselect :value="color" :options="coverColors" @input="changeColor"
-                :placeholder="'Cover Color...'"
-            ></multiselect>
-        </div>
+					<p class="go-gray go-small">
+						The Uploaded photo must have a minimum of 
+						<strong>250*250 pixels</strong> with a
+						<strong>ratio of 1/1</strong> (such as a square or circle)
+					</p>
 
-        <div class="form-group">
-            <label for="name" class="form-label">Full Name:</label>
-            <input type="text" class="form-control" placeholder="Your full name..." v-model="name" id="name">
-        </div>
+					<el-alert v-for="e in avatar.errors.photo"
+					          :title="e"
+					          type="error"
+					          :key="e"></el-alert>
+				</div>
 
-        <div class="form-group">
-            <label for="bio" class="form-label">Bio:</label>
+				<div class="edit-avatar-preview">
+					<img :alt="auth.username"
+					     :src="auth.avatar"
+					     class="circle" />
+				</div>
+			</div>
+		</div>
 
-            <textarea class="form-control" rows="3" v-model="bio" id="bio" placeholder="How would you describe you?"></textarea>
+		<h3 class="dotted-title">
+			<span>
+				Public Profile
+			</span>
+		</h3>
 
-            <small class="text-muted go-red" v-for="e in errors.bio">{{ e }}</small>
-        </div>
+		<el-form label-position="top"
+		         label-width="10px"
+		         :model="form">
+			<el-form-item label="Cover Color">
+				<el-select v-model="form.cover_color"
+				           placeholder="Cover Color..."
+				           filterable>
+					<el-option v-for="item in coverColors"
+					           :key="item"
+					           :label="item"
+					           :value="item">
+					</el-option>
+				</el-select>
+			</el-form-item>
 
-        <div class="form-group">
-            <label for="website" class="form-label">Website:</label>
+			<el-form-item label="Full Name">
+				<el-input placeholder="Your full name..."
+				          v-model="form.name"></el-input>
+				<el-alert v-for="e in errors.name"
+				          :title="e"
+				          type="error"
+				          :key="e"></el-alert>
+			</el-form-item>
 
-            <input type="url" class="form-control" v-model="website" id="website" placeholder="Website"  v-bind:value="auth.website">
+			<el-form-item label="Bio">
+				<el-input placeholder="How would you describe you?"
+				          v-model="form.bio"
+				          type="textarea"
+				          :autosize="{ minRows: 4, maxRows: 10}"></el-input>
+				<el-alert v-for="e in errors.bio"
+				          :title="e"
+				          type="error"
+				          :key="e"></el-alert>
+			</el-form-item>
 
-            <small class="text-muted go-red" v-for="e in errors.website">{{ e }}</small>
-        </div>
+			<el-form-item label="Website">
+				<el-input placeholder="Website..."
+				          v-model="form.website"
+				          type="url"></el-input>
+				<el-alert v-for="e in errors.website"
+				          :title="e"
+				          type="error"
+				          :key="e"></el-alert>
+			</el-form-item>
 
-        <div class="form-group">
-            <label for="location" class="form-label">Location:</label>
+			<el-form-item label="Location">
+				<el-input placeholder="Location..."
+				          v-model="form.location"></el-input>
+				<el-alert v-for="e in errors.location"
+				          :title="e"
+				          type="error"
+				          :key="e"></el-alert>
+			</el-form-item>
 
-            <input type="text" class="form-control" v-model="location" id="location" placeholder="Location">
+			<el-form-item label="Twitter Username">
+				<el-input placeholder="Twitter Username..."
+				          v-model="form.twitter">
+					<template slot="prepend">Https://twitter.com/</template>
+				</el-input>
 
-            <small class="text-muted go-red" v-for="e in errors.location">{{ e }}</small>
-        </div>
+				<el-alert v-for="e in errors.twitter"
+				          :title="e"
+				          type="error"
+				          :key="e"></el-alert>
+			</el-form-item>
 
-        <div class="form-group">
-            <label for="twitter" class="form-label">Twitter Username:</label>
-
-            <input type="text" class="form-control" v-model="twitter" id="twitter" placeholder="Twitter Username...">
-
-            <small class="text-muted go-red" v-for="e in errors.twitter">{{ e }}</small>
-        </div>
-
-        <button class="v-button v-button--green" @click="save" :disabled="sending" v-if="changed">Save</button>
-    </section>
+			<!-- submit -->
+			<el-form-item v-if="changed">
+				<el-button round type="success"
+				           @click="save"
+				           :loading="sending"
+				           size="medium">Save</el-button>
+			</el-form-item>
+		</el-form>
+	</section>
 </template>
 
 <script>
-	import Multiselect from 'vue-multiselect'
+import Helpers from '../mixins/Helpers';
 
-    export default {
+export default {
+    mixins: [Helpers],
 
-	    components: {
-			Multiselect
-	    },
+    data() {
+        return {
+            sending: false,
+            errors: [],
 
-        data: function () {
-            return {
-                sending: false,
-            	errors: [],
-            	customError: '',
-                auth,
-                Store,
+            form: {
                 name: auth.name,
                 bio: auth.bio,
                 website: auth.info.website,
-                color: auth.color,
-				coverColors: [
-					'Blue', 'Dark Blue', 'Red', 'Dark', 'Dark Green', 'Bright Green', 'Purple', 'Pink', 'Orange'
-				],
+                cover_color: auth.cover_color,
                 location: auth.location,
-                twitter: auth.info.twitter,
+                twitter: auth.info.twitter
+            },
+
+            coverColors: [
+                'Blue',
+                'Dark Blue',
+                'Red',
+                'Dark',
+                'Dark Green',
+                'Bright Green',
+                'Purple',
+                'Pink',
+                'Orange'
+            ],
+
+            avatar: {
+                fileUploadFormData: new FormData(),
+                uploading: false,
+                errors: []
             }
-        },
+        };
+    },
 
-        created () {
-        	document.title = 'My Profile | Settings'
-        },
+    computed: {
+        changed() {
+            if (
+                auth.name != this.form.name ||
+                auth.bio != this.form.bio ||
+                auth.info.website != this.form.website ||
+                auth.location != this.form.location ||
+                auth.cover_color != this.form.cover_color ||
+                auth.info.twitter != this.form.twitter
+            ) {
+                return true;
+            }
 
-        mounted () {
-			this.$nextTick(function () {
-				// this.$root.loadCheckBox()
-				this.$root.autoResize()
-			})
-        },
-
-	    computed: {
-	    	changed () {
-	    		if (
-	    			auth.name != this.name ||
-	                auth.bio != this.bio ||
-	                auth.info.website != this.website ||
-	                auth.location != this.location ||
-	                auth.color != this.color ||
-                    auth.info.twitter != this.twitter
-	                ) {
-		    			return true
-		    		}
-
-	    		return false
-	    	},
-	    },
-
-        methods: {
-			// used for multi select
-            changeColor(newSelected) {
-                this.color = newSelected
-            },
-
-            /**
-             * Stores the changes in the database. (using the recently changed values)
-             *
-             * @return void
-             */
-            save () {
-                this.sending = true
-
-            	axios.post( '/update-profile', {
-                    name: this.name,
-                    bio: this.bio,
-                    website: this.website,
-                    location: this.location,
-                    color: this.color,
-                    twitter: this.twitter,
-                }).then((response) => {
-	                this.errors = []
-	                this.customError = ''
-
-	                auth.name = this.name
-	                auth.bio = this.bio
-	                auth.location = this.location
-	                auth.color = this.color
-	                auth.info.website = this.website
-	                auth.info.twitter  = this.twitter
-
-                    this.sending = false
-	            }).catch((error) => {
-	                if(error.response.status == 500) {
-	                	this.sending = false
-	                    this.customError = error.response.data
-	                    this.errors = []
-	                    return
-	                }
-
-                    this.sending = false
-
-	                this.errors = error.response.data
-	            })
-            },
+            return false;
         }
-    };
+    },
+
+    methods: {
+        uploadAvatar(e) {
+            this.avatar.uploading = true;
+            this.avatar.errors = [];
+            this.avatar.fileUploadFormData = new FormData();
+
+            this.avatar.fileUploadFormData.append('photo', e.target.files[0]);
+
+            axios
+                .post('/user/avatar', this.avatar.fileUploadFormData)
+                .then((response) => {
+                    location.reload();
+
+                    this.avatar.uploading = false;
+                })
+                .catch((error) => {
+                    this.avatar.errors = error.response.data.errors;
+                    this.avatar.uploading = false;
+                });
+        },
+
+        save() {
+            this.sending = true;
+
+            axios
+                .patch('/users/profile', {
+                    name: this.form.name,
+                    bio: this.form.bio,
+                    website: this.form.website,
+                    location: this.form.location,
+                    cover_color: this.form.cover_color,
+                    twitter: this.form.twitter
+                })
+                .then(() => {
+                    this.errors = [];
+
+                    auth.name = this.form.name;
+                    auth.bio = this.form.bio;
+                    auth.location = this.form.location;
+                    auth.cover_color = this.form.cover_color;
+                    auth.info.website = this.form.website;
+                    auth.info.twitter = this.form.twitter;
+
+                    if (
+                        typeof Store.page.user.temp.username != 'undefined' &&
+                        Store.page.user.temp.id == auth.id
+                    ) {
+                        Store.page.user.temp.name = auth.name;
+                        Store.page.user.temp.bio = auth.bio;
+                        Store.page.user.temp.cover_color = auth.cover_color;
+                        Store.page.user.temp.location = auth.location;
+                        Store.page.user.temp.info.website = auth.info.website;
+                        Store.page.user.temp.info.twitter = auth.info.twitter;
+                    }
+
+                    this.sending = false;
+                })
+                .catch((error) => {
+                    this.sending = false;
+                    this.errors = error.response.data.errors;
+                });
+        }
+    }
+};
 </script>

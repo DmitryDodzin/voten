@@ -2,6 +2,7 @@
 
 namespace App\Events;
 
+use App\Http\Resources\CommentResource;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -35,5 +36,17 @@ class CommentWasPatched implements ShouldBroadcast
     public function broadcastOn()
     {
         return ['submission.'.$this->comment->submission->slug];
+    }
+
+    /**
+     * Get the data to broadcast.
+     *
+     * @return array
+     */
+    public function broadcastWith()
+    {
+        return [
+            'data' => (new CommentResource($this->comment))->resolve(),
+        ];
     }
 }

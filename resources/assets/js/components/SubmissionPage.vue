@@ -1,309 +1,370 @@
 <template>
-<div>
-	<category-header v-if="loaded && !auth.isMobileDevice"></category-header>
+	<div id="submission-page"
+	     class="home-wrapper user-select">
+		<div class="flex1"
+		     id="comments-submission-page">
+			<submission-channel-header></submission-channel-header>
 
-	<category-header-mobile v-if="loaded && auth.isMobileDevice"></category-header-mobile>
+			<div class="col-full padding-bottom-1 flex1">
+				<nsfw-warning v-if="submission.nsfw == 1 && !auth.nsfw"
+				              :text="'This submission contains NSFW content which can not be displayed according to your personal settings.'">
+				</nsfw-warning>
 
-	<div class="col-full">
-		<nsfw-warning v-if="submission.nsfw == 1 && !auth.nsfw"
-			:text="'This submission contains NSFW content which can not be displayed according to your personal settings.'">
-		</nsfw-warning>
+				<div v-if="submission.nsfw == 0 || auth.nsfw">
+					<loading v-if="loadingSubmission"></loading>
 
-		<div v-if="submission.nsfw == 0 || auth.nsfw">
-			<loading v-if="loadingSubmission"></loading>
+					<full-submission v-if="!loadingSubmission"
+					                 :list="submission"
+					                 :full="true"></full-submission>
 
-			<full-submission v-if="!loadingSubmission" :list="submission" :full="true"></full-submission>
+					<section class="box-typical comments"
+					         id="comments-section"
+					         v-if="!loadingSubmission">
+						<header class="user-select flex-space">
+							<div class="v-bold">
+								<span v-show="comments.length">{{ submission.comments_count }}</span> Comments:
+								<span class="go-gray go-small"
+								      v-if="!isGuest">({{ onlineUsersCount }} online users)</span>
+							</div>
 
-		    <section class="box-typical comments" id="comments-section" v-if="!loadingSubmission">
-		        <header class="box-typical-header-sm bordered user-select flex-space">
-		            <div>
-		            	<span v-show="comments.length">{{ submission.comments_number }}</span>
-		            	Comments: <span class="go-gray go-small" v-if="!isGuest">({{ onlineUsers }} online users)</span>
-		            </div>
-		            <div class="head-sort-icon" v-show="comments.length > 1">
-		                <i class="v-icon v-like pointer" aria-hidden="true"
-		                   data-toggle="tooltip" data-placement="bottom" title="Hottest"
-		                   @click="newSort('hot')"
-		                   :class="{ 'go-primary': sort == 'hot' }"></i>
-		                <i class="v-icon v-clock pointer" aria-hidden="true"
-		                   data-toggle="tooltip" data-placement="bottom" title="Newest"
-		                   @click="newSort('new')"
-		                   :class="{ 'go-primary': sort == 'new' }"></i>
-		            </div>
-		        </header>
+							<el-dropdown size="medium"
+							             trigger="click"
+							             :show-timeout="0"
+							             :hide-timeout="0"
+							             type="primary"
+							             v-show="comments.length > 1">
+								<span class="el-dropdown-link">
+									{{ sort === 'hot' ? 'Hot' : 'New' }}
+									<i class="el-icon-arrow-down el-icon--right"></i>
+								</span>
 
-		        <div class="box-typical-inner ui threaded comments" v-if="submission.id != 0">
-		            <comment-form :submission="submission.id" :parent="0"></comment-form>
+								<el-dropdown-menu slot="dropdown">
+									<el-dropdown-item @click.native="newSort('hot')">
+										Hot
+									</el-dropdown-item>
 
-		            <loading v-if="loadingComments && page < 2"></loading>
+									<el-dropdown-item @click.native="newSort('new')">
+										New
+									</el-dropdown-item>
+								</el-dropdown-menu>
+							</el-dropdown>
+						</header>
 
-					<comment :list="c" :comments-order="commentsOrder" v-for="c in uniqueList" :key="c.id" :full="true"></comment>
-		        </div>
-		    </section>
+						<div class="box-typical-inner ui threaded comments"
+						     v-if="submission.id != 0">
+							<span class="simple-loading"
+							      v-if="loadingComments && page < 2">
+								<i class="el-icon-loading"></i>
+							</span>
 
-		    <button class="v-button v-button--block" v-if="moreComments" @click="loadMoreComments">
-	        	Load More Comments
-	    	</button>
+							<span v-if="!loadingComments && comments.length < 1"
+							      class="no-comments-yet">
+								No comments here yet. Care to be the first one?
+							</span>
+
+							<comment :list="c"
+							         :comments-order="commentsOrder"
+							         v-for="c in uniqueList"
+							         :key="c.id"
+							         :full="true"></comment>
+						</div>
+					</section>
+
+					<div class="align-center margin-bottom-1"
+					     v-if="moreComments">
+						<el-button round type="success"
+						           plain
+						           class="half-width"
+						           @click="loadMoreComments"
+						           :loading="loadingComments">
+							Load More Comments
+						</el-button>
+					</div>
+				</div>
+			</div>
 		</div>
+
+		<comment-form :submission="submission.id"
+		              :commentors="commentors"></comment-form>
 	</div>
-</div>
 </template>
 
 <script>
-	import FullSubmission from '../components/FullSubmission.vue';
-	import Comment from '../components/Comment.vue';
-	import CommentForm from '../components/CommentForm.vue';
-	import CategoryHeader from '../components/CategoryHeader.vue';
-	import CategoryHeaderMobile from '../components/CategoryHeaderMobile.vue';
-	import Loading from '../components/Loading.vue';
-	import NsfwWarning from '../components/NsfwWarning.vue';
-	import Helpers from '../mixins/Helpers';
+import FullSubmission from '../components/FullSubmission.vue';
+import Comment from '../components/Comment.vue';
+import CommentForm from '../components/CommentForm.vue';
+import ChannelHeader from '../components/ChannelHeader.vue';
+import SubmissionChannelHeader from '../components/SubmissionChannelHeader.vue';
+import Loading from '../components/Loading.vue';
+import NsfwWarning from '../components/NsfwWarning.vue';
+import Helpers from '../mixins/Helpers';
 
-    export default {
-    	mixins: [Helpers],
+export default {
+    mixins: [Helpers],
 
-        components: {
-            FullSubmission,
-            Comment,
-            CommentForm,
-            Loading,
-            CategoryHeader,
-            CategoryHeaderMobile,
-			NsfwWarning
-        },
+    components: {
+        FullSubmission,
+        Comment,
+        CommentForm,
+        Loading,
+        ChannelHeader,
+        SubmissionChannelHeader,
+        NsfwWarning
+    },
 
-        data () {
-            return {
-            	page: 1,
-            	moreComments: false,
-                submission: [],
-                loadingComments: true,
-                loadingSubmission: true,
-                comments: [],
-                auth,
-                sort: 'hot',
-                onlineUsers: 0,
-                category: this.$route.params.name,
-                Store,
-                preload
-            }
-        },
+    data() {
+        return {
+            page: 1,
+            moreComments: false,
+            loadingComments: true,
+            comments: [],
+            sort: 'hot',
+            onlineUsers: []
+        };
+    },
 
-        created () {
-            this.getSubmission();
+    created() {
+        this.getComments();
+        this.listen();
+        this.$eventHub.$on('newComment', this.newComment);
+        this.setPageTitle(this.submission.title);
+    },
+
+    beforeDestroy() {
+        this.$eventHub.$off('newComment', this.newComment);
+    },
+
+    watch: {
+        $route() {
+            this.clear();
             this.getComments();
             this.listen();
             this.$eventHub.$on('newComment', this.newComment);
+            this.setPageTitle(this.submission.title);
+        }
+    },
+
+    beforeRouteEnter(to, from, next) {
+        if (
+            typeof Store.page.channel.temp.name != 'undefined' &&
+            Store.page.channel.temp.name != to.params.name
+        ) {
+            Store.page.submission.clearSubmission();
+        }
+
+        if (typeof app != 'undefined') {
+            app.$Progress.start();
+        }
+
+        Store.page.submission
+            .getSubmission(to.params.slug)
+            .then(() => {
+                next((vm) => {
+                    vm.$Progress.finish();
+                });
+            })
+            .catch((error) => {
+                // if (error.response.status === 404) {
+                // 	this.$router.push('/404')
+                // }
+            });
+    },
+
+    beforeRouteLeave(to, from, next) {
+        Echo.leave('submission.' + from.params.slug);
+
+        next();
+    },
+
+    beforeRouteUpdate(to, from, next) {
+        if (to.hash !== from.hash) return;
+
+        Store.page.submission.clearSubmission();
+        this.$Progress.start();
+
+        Store.page.submission
+            .getSubmission(to.params.slug)
+            .then(() => {
+                Echo.leave('submission.' + from.params.slug);
+                this.$Progress.finish();
+
+                next();
+            })
+            .catch((error) => {
+                // if (error.response.status === 404) {
+                // 	this.$router.push('/404')
+                // }
+
+                this.$Progress.fail();
+            });
+    },
+
+    computed: {
+        commentors() {
+            return _.map(this.comments, 'author');
         },
 
-	    watch: {
-			'$route' () {
-	            this.getSubmission();
-	            this.getComments();
-	            this.clearContent();
-	            this.listen();
-	            this.updateCategoryStore();
-	            this.$eventHub.$on('newComment', this.newComment);
-			}
-		},
-
-        computed: {
-			/**
-			 * Due to the issue with duplicate notifiactions (cuz the present ones have diffrent
-			 * timestamps) we need a different approch to make sure the list is always unique.
-			 * This ugly coded methods does it! Maybe move this to the Helpers.js mixin?!
-			 *
-			 * @return array
-			 */
-			uniqueList() {
-				let unique = []
-				let temp = []
-
-				this.comments.forEach(function(element, index, self) {
-					if (temp.indexOf(element.id) === -1) {
-						unique.push(element)
-						temp.push(element.id)
-					}
-				})
-
-				return unique;
-			},
-
-			/**
-			 * Is the category store loaded yet
-			 *
-			 * @return bool
-			 */
-        	loaded () {
-	            return Store.category.name == this.$route.params.name;
-	        },
-
-            /**
-             * The order that comments should be printed with
-             *
-             * @return string
-             */
-            commentsOrder() {
-            	return this.sort == 'hot' ? 'rate' : 'created_at';
-            },
+        submission() {
+            return Store.page.submission.submission;
         },
 
-        methods: {
-        	/**
-        	 * resets all the basic data to prevent possible conflicts
-        	 *
-        	 * @return void
-        	 */
-        	clearContent () {
-        		this.moreComments = false;
-        		this.page = 1;
-        		this.comments = [];
-        	},
+        loadingSubmission() {
+            return Store.page.submission.loadingSubmission;
+        },
 
-        	loadMoreComments () {
-        		this.page ++
-                this.moreComments = false
-        		this.getComments()
-        	},
+        onlineUsersCount() {
+            return this.onlineUsers.length;
+        },
 
-        	/**
-	    	 * Checks wheather or not the Store.category needs to be filled or updated, and if yes simply does it
-	    	 *
-	    	 * @return void
-	    	 */
-	    	updateCategoryStore() {
-	    		if (Store.category.name == undefined || Store.category.name != this.$route.params.name) {
-		    		this.$root.getCategoryStore(this.$route.params.name);
-		    		this.category = this.$route.params.name;
-	    		}
-	    	},
+        uniqueList() {
+            let unique = [];
+            let temp = [];
 
-	    	/**
-	    	 * receives the broadcasted comment.
-	    	 *
-	    	 * @return void
-	    	 */
-            newComment(comment) {
-            	if (comment.parent_id != 0 || comment.submission_id != this.submission.id) return;
+            this.comments.forEach(function(element, index, self) {
+                if (temp.indexOf(element.id) === -1) {
+                    unique.push(element);
+                    temp.push(element.id);
+                }
+            });
 
-				// add broadcasted (used for styling)
-				if (comment.user_id != auth.id) {
-					comment.broadcasted = true;
-				}
+            return unique;
+        },
 
-				this.comments.unshift(comment);
-				this.submission.comments_number ++;
-            },
+        /**
+         * The order that comments should be printed with
+         *
+         * @return string
+         */
+        commentsOrder() {
+            return this.sort == 'hot' ? 'rate' : 'created_at';
+        }
+    },
 
-            /**
-             * listen for broadcasted comments
-             *
-             * @return void
-             */
-            listen() {
-                Echo.channel('submission.' + this.$route.params.slug)
-                    .listen('CommentCreated', event => {
-                    	this.$eventHub.$emit('newComment', event.comment)
-                    }).listen('CommentWasPatched', event => {
-                    	this.$eventHub.$emit('patchedComment', event.comment)
-                    }).listen('CommentWasDeleted', event => {
-                    	this.$eventHub.$emit('deletedComment', event.comment)
-                    });
+    methods: {
+        clear() {
+            this.moreComments = false;
+            this.page = 1;
+            this.comments = [];
+        },
 
-                // we can't do presence channel if the user is a guest
-                if (this.isGuest) return;
+        loadMoreComments() {
+            this.page++;
+            this.getComments();
+        },
 
-                Echo.join('submission.' + this.$route.params.slug)
-				    .here((users) => {
-				        this.onlineUsers = users.length
-				    })
-				    .joining((user) => {
-				        this.onlineUsers ++
-				    })
-				    .leaving((user) => {
-				        this.onlineUsers --
-				    });
-            },
+        /**
+         * receives the broadcasted comment.
+         *
+         * @return void
+         */
+        newComment(comment) {
+            if (
+                comment.parent_id != null ||
+                comment.submission_id != this.submission.id
+            )
+                return;
 
-            /**
-             * Get submissions
-             *
-             * @return void
-             */
-            getSubmission() {
-            	// if landed on a submission page
-            	if (preload.submission) {
-            		this.submission = preload.submission;
-            		Store.category = preload.submission.category;
-            		this.loadingSubmission = false;
-            		delete preload.submission;
-            		return;
-            	}
+            // add broadcasted (used for styling)
+            if (comment.user_id != auth.id) {
+                comment.broadcasted = true;
+            }
 
-                axios.get('/get-submission', {
-            		params: {
-            			slug: this.$route.params.slug
-            		}
-            	}).then((response) => {
-					this.submission = response.data;
-					this.setPageTitle(this.submission.title);
+            this.comments.unshift(comment);
+            this.submission.comments_count++;
 
-                    if(!this.loaded) {
-                    	Store.category = response.data.category;
-                    }
-
-                    this.loadingSubmission = false;
-				}).catch((error) => {
-					if (error.response.status === 404) {
-						this.$router.push('/404')
-					}
-				});
-            },
-
-            /**
-             * get comments
-             *
-             * @return void
-             */
-            getComments () {
-                this.loadingComments = true
-
-                axios.get('/submission-comments', {
-                	params: {
-	                	submission_slug: this.$route.params.slug,
-	                	page: this.page,
-	                	sort: this.sort
-                	}
-                }).then((response) => {
-                	this.loadingComments = false
-
-                    this.comments.push(...response.data.data)
-
-                    if (response.data.next_page_url != null) {
-                    	this.moreComments = true
-                    }
-                })
-            },
-
-            newSort(sort) {
-            	if (sort == this.sort) return;
-
-            	this.clearContent();
-            	this.getComments();
-                this.sort = sort;
+            if (comment.user_id == auth.id) {
+                this.$nextTick(function() {
+                    document
+                        .getElementById('comment' + comment.id)
+                        .scrollIntoView();
+                });
             }
         },
 
         /**
-         * necessary actions before leaving this submission page
+         * listen for broadcasted comments
          *
          * @return void
          */
-        beforeRouteLeave(to, from, next) {
-        	Echo.leave('submission.' + from.params.slug);
+        listen() {
+            const channelAddress = 'submission.' + this.$route.params.slug;
 
-			next();
-		}
+            Echo.channel(channelAddress)
+                .listen('CommentCreated', (event) => {
+                    this.$eventHub.$emit('newComment', event.data);
+                })
+                .listen('CommentWasPatched', (event) => {
+                    this.$eventHub.$emit('patchedComment', event.data);
+                })
+                .listen('CommentWasDeleted', (event) => {
+                    this.$eventHub.$emit('deletedComment', event.data);
+                });
+
+            // we can't do presence channel or/and listen for private channels, if the user is a guest
+            if (this.isGuest) return;
+
+            Echo.join(channelAddress)
+                .here((users) => {
+                    this.onlineUsers = users;
+                })
+                .joining((user) => {
+                    this.onlineUsers.push(user);
+                })
+                .leaving((user) => {
+                    let index = this.onlineUsers.indexOf(user.username);
+                    this.onlineUsers.splice(index, 1);
+
+                    // if typer loses his connection for any reason, we $emit "finished-typing" because
+                    // after all, we must make sure other users won't see "@user is typing" forever!
+                    this.$eventHub.$emit('finished-typing', user.username);
+                });
+        },
+
+        /**
+         * get comments
+         *
+         * @return void
+         */
+        getComments() {
+            this.loadingComments = true;
+
+            axios
+                .get(`/submissions/${this.submission.id}/comments`, {
+                    params: {
+                        page: this.page,
+                        sort: this.sort,
+                        with_children: true,
+                        with_parent: true
+                    }
+                })
+                .then((response) => {
+                    this.loadingComments = false;
+
+                    this.comments.push(...response.data.data);
+
+                    if (response.data.links.next != null) {
+                        this.moreComments = true;
+                    } else {
+                        this.moreComments = false;
+                    }
+                })
+                .catch((error) => {
+                    this.loadingComments = false;
+
+                    this.$message({
+                        message: `Something went wrong and we couldn't load comments. Try refreshing the page. `,
+                        type: 'error'
+                    });
+                });
+        },
+
+        newSort(sort) {
+            if (sort == this.sort) return;
+
+            this.clear();
+            this.getComments();
+            this.sort = sort;
+        }
     }
-
+};
 </script>

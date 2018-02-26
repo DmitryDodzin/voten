@@ -2,6 +2,7 @@
 
 namespace App\Events;
 
+use App\Http\Resources\MessageResource;
 use App\Message;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
@@ -27,7 +28,6 @@ class MessageCreated implements ShouldBroadcast
         $this->message = $message;
         $this->contact_id = $user_id;
         $this->user_id = $contact_id;
-        // $this->dontBroadcastToCurrentUser();
     }
 
     /**
@@ -38,5 +38,17 @@ class MessageCreated implements ShouldBroadcast
     public function broadcastOn()
     {
         return new PrivateChannel('App.User.'.$this->user_id);
+    }
+
+    /**
+     * Get the data to broadcast.
+     *
+     * @return array
+     */
+    public function broadcastWith()
+    {
+        return [
+            'data' => (new MessageResource($this->message))->resolve(),
+        ];
     }
 }

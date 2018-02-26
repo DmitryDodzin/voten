@@ -1,50 +1,51 @@
 <template>
-    <button class="v-button v-button--green" @click="sendMessage">
+    <el-button round type="success" size="mini" @click="sendMessage">
         Message
-    </button>
+    </el-button>
 </template>
 
 
 <script>
-    export default {
-        props: ['id'],
+export default {
+    props: ['id'],
 
-        data: function () {
-            return {
-                subscribed: false,
-                contact: [],
-            }
+    data() {
+        return {
+            subscribed: false,
+            contact: []
+        };
+    },
+
+    created() {
+        this.getUser();
+    },
+
+    methods: {
+        /**
+         * Fetches the required user's info for starting a conversation with him/her
+         *
+         * @return void
+         */
+        getUser() {
+            axios
+                .get('/users', {
+                    params: {
+                        id: this.id
+                    }
+                })
+                .then((response) => {
+                    this.contact = response.data.data;
+                });
         },
 
-
-        created: function () {
-        	this.getUser()
-        },
-
-        methods: {
-        	/**
-        	 * Fetches the required user's info for starting a conversation with him/her
-        	 *
-        	 * @return void
-        	 */
-        	getUser() {
-        		axios.get('/contact-info', {
-	                params: {
-	                	user_id: this.id
-	                }
-	            }).then((response) => {
-	            	this.contact = response.data;
-	            });
-        	},
-
-        	/**
-        	 * Fires the send message event and sends the contact
-        	 *
-        	 * @return void
-        	 */
-        	sendMessage() {
-        		this.$eventHub.$emit('start-conversation', this.contact)
-        	}
+        /**
+         * Fires the send message event and sends the contact
+         *
+         * @return void
+         */
+        sendMessage() {
+            this.$eventHub.$emit('start-conversation', this.contact);
         }
     }
+};
 </script>

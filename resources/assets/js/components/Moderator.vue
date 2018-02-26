@@ -8,53 +8,46 @@
                 </router-link>
             </div>
 
-            <div class="detail"
-            data-toggle="tooltip" data-placement="top" :title="list.subject">
-                {{ list.pivot.role }}
+            <div class="detail">
+                {{ role }}
             </div>
 
             <div class="actions">
-                <i class="pointer v-icon go-gray v-delete h-red" @click="destroy"
-                    :class="!owns ? '' : 'display-hidden'"
-                    data-toggle="tooltip" data-placement="top" title="Remove"></i>
+                <el-tooltip content="Remove" placement="top" transition="false" :open-delay="500">
+                    <i class="pointer v-icon go-gray v-delete h-red" @click="destroy" :class="!owns ? '' : 'display-hidden'"></i>
+                </el-tooltip>
             </div>
         </div>
     </section>
 </template>
 
 <script>
-    export default {
-        components: {},
+export default {
+    data() {
+        return {
+            auth
+        };
+    },
 
-        data: function () {
-            return {
-                auth
-            }
-        },
+    props: ['list', 'role'],
 
-        props: ['list'],
-
-        computed: {
-            owns(){
-                return this.list.id == auth.id
-            }
-        },
-
-        mounted: function() {
-            this.$nextTick(function() {
-                this.$root.loadSemanticTooltip()
-            })
-        },
-
-        methods: {
-            destroy(){
-                axios.post('/destroy-moderator', {
-                    username: this.list.username,
-                    category_name: this.$route.params.name
-                }).then((response) => {
-                    this.$emit('delete-moderator')
-                })
-            }
+    computed: {
+        owns() {
+            return this.list.id == auth.id;
         }
-    };
+    },
+
+    methods: {
+        destroy() {
+            axios
+                .post('/destroy-moderator', {
+                    username: this.list.username,
+                    channel_name: this.$route.params.name
+                })
+                .then(() => {
+                    this.$emit('delete-moderator');
+                });
+        }
+    }
+};
 </script>

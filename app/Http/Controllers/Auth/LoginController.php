@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Mail\NewRegistration;
 use App\Mail\WelcomeToVoten;
 use App\PhotoTools;
 use App\User;
 use Auth;
+use Illuminate\Http\Request;
 use Faker\Factory as Faker;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Support\Facades\Redis;
@@ -48,6 +48,20 @@ class LoginController extends Controller
     public function __construct()
     {
         $this->middleware('guest', ['except' => 'logout']);
+    }
+
+    /**
+     * The user has been authenticated.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  mixed  $user
+     * @return mixed
+     */
+    protected function authenticated(Request $request, $user)
+    {
+        if ($request->expectsJson()) {
+            return res(200, 'Logged in successfully.');
+        }
     }
 
     /* --------------------------------------------------------------------- */
@@ -124,16 +138,13 @@ class LoginController extends Controller
 
         \Mail::to($user->email)->queue(new WelcomeToVoten($user->username));
 
-        // let us know :D
-        \Mail::to('fischersully@gmail.com')->queue(new NewRegistration($user->username));
-
         // set user's default data into cache to save few queries
         $userData = [
             'submissionsCount' => 0,
             'commentsCount'    => 0,
 
-            'submissionKarma' => 0,
-            'commentKarma'    => 0,
+            'submissionXp' => 0,
+            'commentXp'    => 0,
 
             'hiddenSubmissions' => collect(),
             'subscriptions'     => collect(),
@@ -145,7 +156,7 @@ class LoginController extends Controller
 
             'bookmarkedSubmissions' => collect(),
             'bookmarkedComments'    => collect(),
-            'bookmarkedCategories'  => collect(),
+            'bookmarkedChannels'    => collect(),
             'bookmarkedUsers'       => collect(),
 
             'commentUpvotes'   => collect(),
@@ -169,7 +180,7 @@ class LoginController extends Controller
             'user_id'              => $user->id,
         ]);
 
-        $this->redirectTo = '/find-channels?newbie=1&sidebar=0';
+        $this->redirectTo = '/discover-channels?newbie=1&sidebar=0';
 
         return $user;
     }
@@ -274,6 +285,12 @@ class LoginController extends Controller
      */
     public function username()
     {
-        return 'username';
+        $username = request()->input('username');
+
+        $field = filter_var($username, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
+
+        request()->merge([$field => $username]);
+
+        return $field;
     }
 }

@@ -6,17 +6,13 @@ use Illuminate\Database\Eloquent\Model;
 
 class Photo extends Model
 {
-    // onDelete we must also delete the actual photos from the FTP server
-    // onDelete we must also delete the actual photos from the FTP server
-    // onDelete we must also delete the actual photos from the FTP server
-
     /**
-     *   The attributes that are mass assignable.
+     * The attributes that are mass assignable.
      *
-     *   @var array
+     * @var array
      */
     protected $fillable = [
-        'submission_id',
+        'submission_id', 'user_id',
     ];
 
     public function owner()

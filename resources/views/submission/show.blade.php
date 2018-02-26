@@ -5,7 +5,7 @@
 	<title>{{ $submission->title }} - Voten</title>
 	<meta property="og:type" content="article" />
 	<meta property="og:title" content="{{ $submission->title }} - Voten" />
-	<meta property="og:url" content="{{ config('app.url') }}/c/{{ $submission->category_name }}/{{ $submission->slug }}" />
+	<meta property="og:url" content="{{ config('app.url') }}/c/{{ $submission->channel_name }}/{{ $submission->slug }}" />
 	<meta property="og:site_name" content="Voten" />
 
 	<meta name="twitter:card" content="summary" />
@@ -33,7 +33,8 @@
 @section('script')
 	<script>
 		var preload = {
-			submission: {!! $submission !!}
+			submission: {!! json_encode($submission->resolve()) !!}, 
+			channel: {!! json_encode($channel->resolve()) !!}
 		};
 	</script>
 @endsection

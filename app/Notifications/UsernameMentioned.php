@@ -6,6 +6,7 @@ use App\Submission;
 use App\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -68,10 +69,26 @@ class UsernameMentioned extends Notification implements ShouldBroadcast
     public function toArray($notifiable)
     {
         return [
-            'url'    => '/c/'.$this->submission->category_name.'/'.$this->submission->slug,
+            'url'    => '/c/'.$this->submission->channel_name.'/'.$this->submission->slug,
             'name'   => $this->user->username,
             'avatar' => $this->user->avatar,
             'body'   => '@'.$this->user->username.' mentioned your username at "'.$this->submission->title.'"',
         ];
+    }
+
+    /**
+     * Get the broadcastable representation of the notification.
+     *
+     * @param mixed $notifiable
+     *
+     * @return BroadcastMessage
+     */
+    public function toBroadcast($notifiable)
+    {
+        return new BroadcastMessage([
+            'data'       => $this->toArray($notifiable),
+            'created_at' => now(),
+            'read_at'    => null,
+        ]);
     }
 }

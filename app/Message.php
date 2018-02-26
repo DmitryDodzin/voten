@@ -19,11 +19,21 @@ class Message extends Model
         'data' => 'json',
     ];
 
+    /**
+     * The attributes that should be mutated to dates.
+     *
+     * @var array
+     */
+    protected $dates = [
+        'created_at',
+        'updated_at',
+        'read_at',
+    ];
+
     protected $with = ['owner'];
 
     public function owner()
     {
-        return $this->belongsTo(User::class, 'user_id')
-                    ->select('id', 'username', 'name', 'avatar');
+        return $this->belongsTo(User::class, 'user_id');
     }
 }

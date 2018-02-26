@@ -8,12 +8,15 @@
             </div>
 
             <div class="actions">
-                <i class="pointer v-icon go-gray v-attention-alt h-yellow" :class="list.description ? '' : 'display-hidden'"
-                    @click="showDescription = !showDescription"
-                    data-toggle="tooltip" data-placement="top" title="Reason for being blocked"></i>
+                <el-tooltip content="Reason for being blocked" placement="top" transition="false" :open-delay="500">
+                    <i class="pointer v-icon go-gray v-attention-alt h-yellow"
+                       :class="list.description ? '' : 'display-hidden'"
+                       @click="showDescription = !showDescription"></i>
+                </el-tooltip>
 
-                <i class="pointer v-icon go-gray v-delete h-red" @click="$emit('unblock', list.domain)"
-                    data-toggle="tooltip" data-placement="top" title="Unblock"></i>
+                <el-tooltip content="Unblock" placement="top" transition="false" :open-delay="500">
+                    <i class="pointer v-icon go-gray v-delete h-red" @click="$emit('unblock', list.domain)"></i>
+                </el-tooltip>
             </div>
         </div>
 
@@ -24,75 +27,53 @@
 </template>
 
 <script>
-    import Markdown from '../components/Markdown.vue'
+import Markdown from '../components/Markdown.vue';
 
-    export default {
-        components: { Markdown },
+export default {
+    components: { Markdown },
 
+    data() {
+        return {
+            showDescription: false
+        };
+    },
 
-        mixins: [],
-
-        data: function () {
-            return {
-                showDescription: false
-            }
-        },
-
-        props: ['list'],
-
-
-        computed: {
-            //
-        },
-
-        created () {
-            //
-        },
-
-        mounted: function() {
-            this.$nextTick(function() {
-                this.$root.loadSemanticTooltip()
-            })
-        },
-
-        methods: {
-            //
-        }
-    };
+    props: ['list']
+};
 </script>
 
 <style>
-    .banned-user {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }
+.banned-user {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
 
-    .banned-user-wrapper {
-        border-bottom: 1px dashed #dcdcdc;
-        padding-bottom: .3em;
-        margin-bottom: .3em;
-    }
+.banned-user-wrapper {
+    border-bottom: 1px dashed #dcdcdc;
+    padding-bottom: 0.3em;
+    margin-bottom: 0.3em;
+}
 
-    .banned-user a {
-        color: #333;
-    }
+.banned-user a {
+    color: #333;
+}
 
-    .banned-user img {
-        width: 25px;
-        height: auto;
-        border-radius: 50%;
-        margin-right: .2em;
-    }
+.banned-user img {
+    width: 25px;
+    height: auto;
+    border-radius: 50%;
+    margin-right: 0.2em;
+}
 
-    .banned-user-description {
-        background: #fdfdfd;
-        color: #333;
-        border: 1px solid #e7e7e7;
-        padding: .5em;
-        border-radius: 2px;
-        line-height: 2;
-        overflow: auto;
-        margin: .3em;
-    }
+.banned-user-description {
+    background: #fdfdfd;
+    color: #333;
+    border: 1px solid #e7e7e7;
+    padding: 0.5em;
+    border-radius: 2px;
+    line-height: 2;
+    overflow: auto;
+    margin: 0.3em;
+}
 </style>

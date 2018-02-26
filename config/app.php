@@ -12,7 +12,14 @@ return [
     | any other location as required by the application or its packages.
     */
 
-    'name' => 'Voten',
+    'name'             => 'Voten',
+    'title'            => 'Voten: Where your vote matters',
+    'description'      => 'An open-source, beautiful, highly customizable yet deadly simple, and warm community. ',
+    'logo'             => 'voten.png',
+    'twitter_username' => '@voten_co',
+    'twitter-url'      => 'https://twitter.com/voten_co',
+    'github_url'       => 'https://github.com/voten-co/voten',
+    'blog_url'         => 'https://medium.com/voten',
 
     /*
     |--------------------------------------------------------------------------
@@ -51,7 +58,7 @@ return [
     |
     */
 
-    'url' => env('APP_URL', 'http://localhost'),
+    'url' => env('APP_URL', 'https://voten.co'),
 
     /*
     |--------------------------------------------------------------------------
@@ -174,19 +181,15 @@ return [
 
         // Added packages
         Intervention\Image\ImageServiceProvider::class,
-        Flugg\Responder\ResponderServiceProvider::class,
 
         Laravel\Tinker\TinkerServiceProvider::class,
-        Pbmedia\LaravelFFMpeg\FFMpegServiceProvider::class,
         Laravel\Socialite\SocialiteServiceProvider::class,
         Laravel\Passport\PassportServiceProvider::class,
         Sentry\SentryLaravel\SentryLaravelServiceProvider::class,
         Laravel\Scout\ScoutServiceProvider::class,
-        ScoutEngines\Elasticsearch\ElasticsearchProvider::class,
 
         // dev only
         VueGenerators\ServiceProvider::class,
-        DamianTW\MySQLScout\Providers\MySQLScoutServiceProvider::class,
         Barryvdh\LaravelIdeHelper\IdeHelperServiceProvider::class,
     ],
 

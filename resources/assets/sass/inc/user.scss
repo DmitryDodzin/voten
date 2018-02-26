@@ -1,11 +1,10 @@
 .profile-cover {
-    min-height: 240px;
+    min-height: 100px;
     width: 100%;
-	border-bottom: 2px solid;
+    border-bottom: 2px solid;
     border-color: rgba(117, 148, 127, 0.24);
     color: #f8f8f8;
     position: relative;
-    padding-bottom: 1em;
 }
 
 .profile-cover a {
@@ -16,7 +15,7 @@
 
 .profile-cover a:hover {
     color: #ebebeb;
-    transition: .2s;
+    transition: 0.2s;
 }
 
 .profile-cover a h1 i {
@@ -64,12 +63,24 @@
 }
 
 .profile-avatar img {
-    border-radius: 4px;
-    width: 138px;
-    height: 138px;
-    border: 2px solid #fff;
-    box-shadow: 1px 1px 2px 2px rgba(21, 21, 21, 0.38);
-    border-color: rgba(255, 255, 255, 0.38) hsla(0, 0%, 74%, 0.68) rgba(159, 159, 159, 0.95);
+    width: 90px;
+    height: 90px;
+}
+
+#user-header {
+    .profile-avatar img {
+        border: 2px solid rgba(231, 231, 231, 0.28);
+    }
+}
+
+.edit-avatar-preview {
+    img {
+        width: 180px;
+        border: 2px solid #3c3c3c;
+    }
+
+    padding: 1em;
+    padding-right: 0;
 }
 
 .profile-avatar .fa-pulse {
@@ -113,5 +124,13 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(to bottom, transparent 0, rgba(0, 0, 0, 0.03) 8%, rgba(0, 0, 0, 0.11) 21%, rgba(0, 0, 0, 0.61) 78%, rgba(0, 0, 0, 0.7) 95%, rgba(0, 0, 0, 0.7) 100%);
+    background: linear-gradient(
+        to bottom,
+        transparent 0,
+        rgba(0, 0, 0, 0.03) 8%,
+        rgba(0, 0, 0, 0.11) 21%,
+        rgba(0, 0, 0, 0.61) 78%,
+        rgba(0, 0, 0, 0.7) 95%,
+        rgba(0, 0, 0, 0.7) 100%
+    );
 }

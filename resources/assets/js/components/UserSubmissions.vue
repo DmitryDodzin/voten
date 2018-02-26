@@ -1,123 +1,118 @@
 <template>
-    <div class="container margin-top-1 col-7">
-	    <div v-for="submission in submissions" v-bind:key="submission.id">
-	        <submission :list="submission"></submission>
-	    </div>
-
-	    <no-content v-if="nothingFound" :text="'This user has not submitted anything yet'"></no-content>
-
-        <loading v-if="loading"></loading>
-
-        <no-more-items :text="'No more items to load'" v-if="NoMoreItems && !nothingFound"></no-more-items>
-    </div>
+	<div class="padding-bottom-10 flex1" :class="{'flex-center' : nothingFound}" id="submissions" 
+		v-infinite-scroll="loadMore" infinite-scroll-disabled="cantLoadMore" @scroll.passive="scrolled"
+	>
+		<submission :list="submission" v-for="submission in submissions" v-bind:key="submission.id"></submission>
+	
+		<no-content v-if="nothingFound" :text="'This user has not submitted anything yet'"></no-content>
+	
+		<loading v-if="loading && page > 1"></loading>
+	
+		<no-more-items :text="'No more items to load'" v-if="NoMoreItems && !nothingFound"></no-more-items>
+	</div>
 </template>
 
 <script>
-    import Submission from '../components/Submission.vue';
-    import Loading from '../components/Loading.vue';
-    import NoMoreItems from '../components/NoMoreItems.vue';
-    import NoContent from '../components/NoContent.vue';
-    import UserHeader from '../components/UserHeader.vue';
-    import Helpers from '../mixins/Helpers';
+import Submission from '../components/Submission.vue';
+import NoMoreItems from '../components/NoMoreItems.vue';
+import NoContent from '../components/NoContent.vue';
+import UserHeader from '../components/UserHeader.vue';
+import Helpers from '../mixins/Helpers';
+import Loading from '../components/Loading.vue';
 
-    export default {
-    	mixins: [Helpers],
+export default {
+    mixins: [Helpers],
 
-        components: {
-            Submission,
-            Loading,
-            NoContent,
-            UserHeader,
-            NoMoreItems,
+    components: {
+        Submission,
+        NoContent,
+        UserHeader,
+        NoMoreItems,
+        Loading
+    },
+
+    computed: {
+        NoMoreItems() {
+            return Store.page.user.submissions.NoMoreItems;
         },
 
-        data: function () {
-            return {
-                NoMoreItems: false,
-                submissions: [],
-                loading: true,
-                page: 0,
-                nothingFound: false,
+        submissions() {
+            return Store.page.user.submissions.submissions;
+        },
+
+        loading() {
+            return Store.page.user.submissions.loading;
+        },
+
+        page() {
+            return Store.page.user.submissions.page;
+        },
+
+        nothingFound() {
+            return Store.page.user.submissions.nothingFound;
+        },
+
+        cantLoadMore() {
+            return this.loading || this.NoMoreItems || this.nothingFound;
+        }
+    },
+
+    created() {
+        this.setPageTitle('Submissions | @' + this.$route.params.username);
+    },
+
+    beforeRouteEnter(to, from, next) {
+        if (
+            typeof Store.page.user.temp.username != 'undefined' &&
+            Store.page.user.temp.username != to.params.username
+        ) {
+            Store.page.user.submissions.clear();
+        }
+
+        if (Store.page.user.submissions.page === 0) {
+            if (typeof app != 'undefined') {
+                app.$Progress.start();
             }
-        },
 
-       created: function() {
-           	this.$eventHub.$on('scrolled-to-bottom', this.loadMore);
-        	this.getSubmissions();
-        	this.setPageTitle('@' + this.$route.params.username);
-       },
+            Promise.all([
+                Store.page.user.submissions.getSubmissions(to.params.username),
+                Store.page.user.getUser(to.params.username)
+            ]).then(() => {
+                next((vm) => {
+                    vm.$Progress.finish();
+                });
+            });
+        } else {
+            next((vm) => {
+                vm.$Progress.finish();
+            });
+        }
+    },
 
-       	watch: {
-	    	'$route': function () {
-	    		this.clearContent()
-	    		this.getSubmissions()
-	    	}
-	    },
+    beforeRouteUpdate(to, from, next) {
+        if (to.hash !== from.hash) return;
 
+        Store.page.user.submissions.clear();
 
-        methods: {
-            loadMore () {
-				if ( Store.contentRouter == 'content' && !this.loading && !this.NoMoreItems && this.$route.name == 'user-submissions' ) {
-					this.getSubmissions()
-				}
-			},
+        this.$Progress.start();
 
-        	clearContent () {
-                this.submissions = []
-                this.loading = true
-                this.nothingFound = false
-        	},
+        Promise.all([
+            Store.page.user.submissions.getSubmissions(to.params.username),
+            Store.page.user.getUser(to.params.username, false)
+        ]).then((values) => {
+            Store.page.user.setUser(values[1]);
+            this.setPageTitle('Submissions | @' + to.params.username);
+            this.$Progress.finish();
+            next();
+        });
+    },
 
-        	/**
-        	 * Fetches the submissions via ajax call
-        	 *
-        	 * @return void
-        	 */
-        	getSubmissions: function () {
-                this.page ++
-           		this.loading = true
-
-           		// if landed on the user page as guest
-	        	if (preload.submissions && this.$route.name == 'user-submissions' && this.page == 1) {
-	        		this.submissions = preload.submissions.data;
-
-					if (!this.submissions.length) {
-						this.nothingFound = true
-					}
-
-					if (preload.submissions.next_page_url == null) {
-						this.NoMoreItems = true
-					}
-
-					this.loading = false;
-
-					// clear the preload
-					delete preload.submissions;
-
-					return;
-	        	}
-
-        		axios.get('/user-submissions', {
-        			params: {
-        				page: this.page,
-        				username: this.$route.params.username
-        			}
-        		}).then((response) => {
-                    this.submissions = [...this.submissions, ...response.data.data]
-
-                    if (response.data.next_page_url == null) {
-						this.NoMoreItems = true
-					}
-
-	                if(this.submissions.length < 1) {
-	                	this.nothingFound = true
-	                }
-
-                    this.loading = false
-	            })
-        	},
-        },
-
+    methods: {
+        loadMore() {
+            Store.page.user.submissions.getSubmissions(
+                this.$route.params.username
+            );
+        }
     }
-
+};
 </script>

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Traits\CachableCategory;
+use App\Traits\CachableChannel;
 use App\Traits\CachableUser;
 use Auth;
 use DB;
@@ -10,11 +10,11 @@ use Illuminate\Http\Request;
 
 class StoreController extends Controller
 {
-    use CachableUser, CachableCategory;
+    use CachableUser, CachableChannel;
 
     public function __construct()
     {
-        $this->middleware('auth', ['except' => ['sidebarCategories']]);
+        $this->middleware('auth', ['except' => ['sidebarChannels']]);
     }
 
     /**
@@ -24,10 +24,8 @@ class StoreController extends Controller
      *
      * @return collection
      */
-    public function index(Request $request)
+    public function index()
     {
-        $user = Auth::user();
-
         return collect([
             'submissionUpvotes'           => $this->submissionUpvotes(), // cached
             'submissionDownvotes'         => $this->submissionDownvotes(), // cached
@@ -35,24 +33,25 @@ class StoreController extends Controller
             'commentDownvotes'            => $this->commentDownvotes(), // cached
             'bookmarkedSubmissions'       => $this->bookmarkedSubmissions(), // cached
             'bookmarkedComments'          => $this->bookmarkedComments(), // cached
-            'bookmarkedCategories'        => $this->bookmarkedCategories(), // cached
+            'bookmarkedChannels'          => $this->bookmarkedChannels(), // cached
             'bookmarkedUsers'             => $this->bookmarkedUsers(), // cached
-            'subscribedCategories'        => $this->subscribedCategories($request->sidebar_filter),
-            'moderatingCategories'        => $this->moderatingCategories(),
-            'moderatingCategoriesRecords' => $this->moderatingCategoriesRecords(),
+            'subscribedChannels'          => $this->subscribedChannels(),
+            'moderatingChannels'          => $this->moderatingChannels(),
+            'moderatingChannelsRecords'   => $this->moderatingChannelsRecords(),
+            'bookmarkedChannelsRecords'   => $this->bookmarkedChannelsRecords(),
             'blockedUsers'                => $this->blockedUsers(), // cached
         ]);
     }
 
-    protected function moderatingCategoriesRecords()
+    protected function moderatingChannelsRecords()
     {
         return DB::table('roles')->where('user_id', Auth::id())->get();
     }
 
-    // Returnes Auth user's moderated categories
-    protected function moderatingCategories()
+    // Returnes Auth user's moderated channels
+    protected function moderatingChannels()
     {
-        return Auth::user()->categoryRoles->unique('name');
+        return Auth::user()->channelRoles->unique('name');
     }
 
     // Returns Auth user's (submission) upvote records
@@ -80,29 +79,22 @@ class StoreController extends Controller
     }
 
     // returns subscriptions of Auth user
-    protected function subscribedCategories($filter = 'subscribed-channels')
+    protected function subscribedChannels()
     {
         if (!Auth::check()) {
-            return $this->getDefaultCategoryRecords();
+            return $this->getDefaultChannelRecords();
         }
 
-        if ($filter == 'moderating-channels') {
-            return Auth::user()->categoryRoles;
-        } elseif ($filter == 'bookmarked-channels') {
-            return Auth::user()->bookmarkedCategories;
-        }
-
-        // $filter == "subscribed channels"
         return Auth::user()->subscriptions;
     }
 
-    /**
-     * returns categoeis for sidebar.
-     *
-     * @return collection
-     */
-    public function sidebarCategories(Request $request)
+    protected function bookmarkedChannelsRecords()
     {
-        return $this->subscribedCategories($request->sidebar_filter);
+        return Auth::user()->bookmarkedChannels;
+    }
+
+    protected function sidebarChannels()
+    {
+        return $this->subscribedChannels();
     }
 }

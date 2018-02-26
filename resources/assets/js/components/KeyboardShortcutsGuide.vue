@@ -1,153 +1,144 @@
 <template>
-    <div class="v-modal-small user-select" :class="{ 'width-100': !sidebar }">
-        <div class="v-modal-small-box" v-on-clickaway="close">
-            <div class="flex1">
-                <h2 class="align-center">
-                    Keyboard Shortcuts
-                </h2>
+    <el-dialog
+            title="Keyboard Shortcuts"
+            :visible="visible"
+            :width="isMobile ? '99%' : '600px'"
+            @close="close"
+            append-to-body
+            class="user-select"
+    >
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Key</th>
+                <th class="half-width">Action</th>
+            </tr>
+            </thead>
 
-                <table class="table">
-				  	<thead>
-					    <tr>
-							<th>Key</th>
-							<th class="half-width">Action</th>
-					    </tr>
-				  	</thead>
+            <tbody>
+            <tr>
+                <td>
+                    <kbd>Alt</kbd> + <kbd>S</kbd>
+                </td>
 
-				  	<tbody>
-			  			<tr>
-					      	<td>
-					      		<kbd>Alt</kbd> + <kbd>S</kbd>
-					      	</td>
+                <td>
+                    New Submission
+                </td>
+            </tr>
 
-					      	<td>
-					      		New Submission
-					      	</td>
-					    </tr>
+            <tr>
+                <td>
+                    <kbd>Alt</kbd> + <kbd>C</kbd>
+                </td>
 
-                        <tr>
-					      	<td>
-					      		<kbd>Alt</kbd> + <kbd>C</kbd>
-					      	</td>
+                <td>
+                    New Channel
+                </td>
+            </tr>
 
-					      	<td>
-					      		New Channel
-					      	</td>
-					    </tr>
+            <tr>
+                <td>
+                    <kbd>N</kbd>
+                </td>
 
-                        <tr>
-					      	<td>
-					      		<kbd>S</kbd>
-					      	</td>
+                <td>
+                    Notifications
+                </td>
+            </tr>
 
-					      	<td>
-					      		Hide/Show Sidebar
-					      	</td>
-					    </tr>
+            <tr>
+                <td>
+                    <kbd>M</kbd>
+                </td>
 
-                        <tr>
-					      	<td>
-					      		<kbd>N</kbd>
-					      	</td>
+                <td>
+                    Messages
+                </td>
+            </tr>
 
-					      	<td>
-					      		Notifications
-					      	</td>
-					    </tr>
+            <tr>
+                <td>
+                    <kbd>/</kbd>
+                </td>
 
-                        <tr>
-					      	<td>
-					      		<kbd>M</kbd>
-					      	</td>
+                <td>
+                    Search
+                </td>
+            </tr>
 
-					      	<td>
-					      		Messages
-					      	</td>
-					    </tr>
+            <tr>
+                <td>
+                    <kbd>B</kbd>
+                </td>
 
-                        <tr>
-					      	<td>
-					      		<kbd>/</kbd>
-					      	</td>
+                <td>
+                    Bookmarks
+                </td>
+            </tr>
 
-					      	<td>
-					      		Search
-					      	</td>
-					    </tr>
+            <tr>
+                <td>
+                    <kbd>H</kbd>
+                </td>
 
-                        <tr>
-					      	<td>
-					      		<kbd>B</kbd>
-					      	</td>
+                <td>
+                    Home
+                </td>
+            </tr>
 
-					      	<td>
-					      		Bookmarks
-					      	</td>
-					    </tr>
+            <tr>
+                <td>
+                    <kbd>P</kbd>
+                </td>
+                <td>
+                    Profile
+                </td>
+            </tr>
 
-                        <tr>
-					      	<td>
-					      		<kbd>H</kbd>
-					      	</td>
+            <tr>
+                <td>
+                    <kbd>R</kbd>
+                </td>
+                <td>
+                    Refresh Submissions
+                </td>
+            </tr>
 
-					      	<td>
-					      		Home
-					      	</td>
-					    </tr>
-
-                        <tr>
-                            <td>
-                                <kbd>P</kbd>
-                            </td>
-                            <td>
-                                Profile
-                            </td>
-                        </tr>
-
-                        <tr>
-                            <td>
-                                <kbd>R</kbd>
-                            </td>
-                            <td>
-                                Refresh Submissions
-                            </td>
-                        </tr>
-
-                        <tr>
-                            <td>
-                                <kbd>Shift</kbd> + <kbd>/</kbd>
-                            </td>
-                            <td>
-                                Show these shortcuts
-                            </td>
-                        </tr>
-				  	</tbody>
-				</table>
-
-
-
-                <button type="button" class="v-button v-button--green v-button--block"
-                    data-toggle="tooltip" data-placement="bottom" title="Close (esc)"
-                    @click="close">
-                    Close
-                </button>
-            </div>
-        </div>
-    </div>
+            <tr>
+                <td>
+                    <kbd>Shift</kbd> + <kbd>/</kbd>
+                </td>
+                <td>
+                    Show these shortcuts
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </el-dialog>
 </template>
 
 <script>
-    import { mixin as clickaway } from 'vue-clickaway';
+import Helpers from '../mixins/Helpers';
 
-	export default {
-		props: ['sidebar'],
+export default {
+    mixins: [Helpers],
 
-        mixins: [ clickaway ],
+    props: ['visible'],
 
-	    methods: {
-	    	close () {
-	    		this.$eventHub.$emit('close')
-	    	},
-	    },
-	}
+    beforeDestroy() {
+        if (window.location.hash == '#keyboardShortcutsGuide') {
+            history.go(-1);
+        }
+    },
+
+    created() {
+        window.location.hash = 'keyboardShortcutsGuide';
+    },
+
+    methods: {
+        close() {
+            this.$emit('update:visible', false);
+        }
+    }
+};
 </script>

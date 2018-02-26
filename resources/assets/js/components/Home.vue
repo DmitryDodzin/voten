@@ -1,154 +1,200 @@
 <template>
-	<div class="home-wrapper">
-		<announcement></announcement>
+    <div class="home-wrapper" id="home">
+        <nav class="nav has-shadow user-select" :class="{'shade-item relative': showTour && activeTour.id === 'feed'}">
+            <tour v-if="showTour && activeTour.id == 'feed'" :position="{ top: '7em', left: '39%' }"></tour>
 
-	    <div class="col-7 padding-bottom-10">
-			<div class="flex-space flex-align-center user-select margin-bottom-2 mobile-padding">
-				<div>
-					<ul class="flat-nav">
-						<router-link tag="li" :to="{ path: '/' }" class="item" :class="{ 'active': sort == 'hot' }">
-							Hot
-						</router-link>
+            <div class="container">
+                <div class="nav-left">
+                    <router-link :to="{ path: '/' }" class="nav-item is-tab" :class="{ 'is-active': sort == 'hot' }">
+                        Hot
+                    </router-link>
 
-						<router-link tag="li" :to="{ path: '/?sort=new' }" class="item" :class="{ 'active': sort == 'new' }">
-							New
-						</router-link>
+                    <router-link :to="{ path: '/?sort=new' }" class="nav-item is-tab"
+                                 :class="{ 'is-active': sort == 'new' }">
+                        New
+                    </router-link>
 
-						<router-link tag="li" :to="{ path: '/?sort=rising' }" class="item" :class="{ 'active': sort == 'rising' }">
-							Rising
-						</router-link>
-					</ul>
-				</div>
+                    <router-link :to="{ path: '/?sort=rising' }" class="nav-item is-tab"
+                                 :class="{ 'is-active': sort == 'rising' }">
+                        Rising
+                    </router-link>
+                </div>
 
-				<div>
-					<div class="ui icon top right active-blue pointing dropdown feed-panel-button" @click="mustBeLogin">
-						<i class="v-icon v-config"></i>
+                <el-tooltip content="Scroll to top" placement="bottom" transition="false" :open-delay="500">
+                    <img src="/imgs/voten.png" class="logo" alt="Voten" @click="scrollToTop('submissions')">
+                </el-tooltip>    
 
-						<div class="menu">
-							<div class="header">
-								Filter by
-							</div>
+                <div class="flex-center">
+                    <el-tooltip content="Refresh (R)" placement="bottom" transition="false" :open-delay="500">
+                        <button class="feed-panel-button" @click="refresh">
+                            <i class="el-icon-refresh" :class="{'rotate': refreshing}"></i>
+                        </button>
+                    </el-tooltip>
 
-							<button class="item" @click="changeFilter('subscribed-channels')" :class="{ 'active' : filter == 'subscribed-channels' }">
-								Subscribed channels
-							</button>
+                    <el-tooltip content="Customize Feed" placement="bottom" transition="false" :open-delay="500" v-if="isLoggedIn">
+                        <button class="feed-panel-button margin-right-half" @click="Store.modals.feedSettings.show = true">
+                            <i class="el-icon-setting"></i>
+                        </button>
+                    </el-tooltip>
 
-							<button class="item" @click="changeFilter('all-channels')" :class="{ 'active' : filter == 'all-channels' }">
-								All channels
-							</button>
+                    <el-button round type="primary" size="mini" @click="submit" v-if="isLoggedIn">
+                        Submit
+                    </el-button>
+                </div>
+            </div>
+        </nav>
 
-							<button class="item" @click="changeFilter('moderating-channels')" :class="{ 'active' : filter == 'moderating-channels' }" v-if="isModerating">
-								Moderating channels
-							</button>
+        <section id="submissions" class="home-submissions" :class="{'flex-center' : nothingFound}"
+            v-infinite-scroll="loadMore" infinite-scroll-disabled="cantLoadMore" @scroll.passive="scrolled"
+        >
+            <div v-for="(value, index) in uniqueList" v-bind:key="value.id">
+                <suggested-channel v-if="isLoggedIn && index == 5"></suggested-channel>
 
-							<button class="item" @click="changeFilter('bookmarked-channels')" :class="{ 'active' : filter == 'bookmarked-channels' }">
-								Bookmarked channels
-							</button>
+                <submission :list="value"></submission>
+            </div>
 
-							<button class="item" @click="changeFilter('by-bookmarked-users')" :class="{ 'active' : filter == 'by-bookmarked-users' }">
-								By bookmarked users
-							</button>
-						</div>
-					</div>
+            <no-content v-if="Store.page.home.nothingFound"
+                        :text="'No submissions at this time. Try subscribing to more channels or adjusting your feed filters.'"></no-content>
 
-					<button class="feed-panel-button btn-nth--h" @click="refresh"
-					data-toggle="tooltip" data-placement="bottom" title="Refresh">
-						<i class="v-icon v-refetch"></i>
-					</button>
-				</div>
-			</div>
+            <loading v-if="loading && page > 1"></loading>
 
-			<home-submissions></home-submissions>
-	    </div>
-	</div>
+            <no-more-items :text="'No more items to load'" v-if="NoMoreItems && !nothingFound"></no-more-items>
+        </section>
+    </div>
 </template>
 
 <script>
-	import HomeSubmissions from '../components/HomeSubmissions.vue';
-	import Announcement from '../components/Announcement.vue';
-	import Helpers from '../mixins/Helpers';
-	import LocalStorage from '../mixins/LocalStorage';
+import Helpers from '../mixins/Helpers';
+import Submission from '../components/Submission.vue';
+import SuggestedChannel from '../components/SuggestedChannel.vue';
+import Loading from '../components/Loading.vue';
+import NoContent from '../components/NoContent.vue';
+import NoMoreItems from '../components/NoMoreItems.vue';
+import Tour from '../components/Tour';
 
-    export default {
-    	mixins: [Helpers, LocalStorage],
+export default {
+    mixins: [Helpers],
 
-	    components: {
-	        HomeSubmissions,
-	        Announcement
-	    },
+    components: {
+        Submission,
+        Loading,
+        SuggestedChannel,
+        NoContent,
+        NoMoreItems,
+        Tour
+    },
 
-        created() {
-            this.setPageTitle('Voten - Social Bookmarking For The 21st Century', true);
-            this.askNotificationPermission();
+    data() {
+        return {
+            refreshing: false
+        };
+    },
+
+    beforeRouteEnter(to, from, next) {
+        if (Store.page.home.page === 0) {
+            if (typeof app != 'undefined') {
+                app.$Progress.start();
+            }
+
+            Store.page.home.getSubmissions(to.query.sort).then(() => {
+                next((vm) => vm.$Progress.finish());
+            });
+        } else {
+            next();
+        }
+    },
+
+    beforeRouteUpdate(to, from, next) {
+        if (to.hash !== from.hash) return;
+
+        Store.page.home.clear();
+
+        this.$Progress.start();
+
+        Store.page.home.getSubmissions(to.query.sort).then(() => {
+            this.$Progress.finish();
+            next();
+        });
+    },
+
+    created() {
+        this.setPageTitle('Voten: ' + Laravel.title, true);
+        this.startTour();
+        this.$eventHub.$on('refresh-home', this.refresh);
+    },
+
+    beforeDestroy() {
+        this.$eventHub.$off('refresh-home', this.refresh);
+    },
+
+    computed: {
+        cantLoadMore() {
+            return this.loading || this.NoMoreItems || this.nothingFound;
         },
 
-		mounted () {
-			this.$nextTick(function () {
-	        	this.$root.loadSemanticTooltip();
-	        	this.$root.loadSemanticDropdown();
-			})
-		},
-
-        computed: {
-        	filter() {
-        	    return Store.feedFilter;
-        	},
-
-        	/**
-    	 	 * the sort of the page
-	    	 *
-	    	 * @return mixed
-	    	 */
-	    	sort() {
-	    	    if (this.$route.query.sort == 'new')
-	    	    	return 'new';
-
-	    	    if (this.$route.query.sort == 'rising')
-	    	    	return 'rising';
-
-	    	    return 'hot';
-	    	},
+        NoMoreItems() {
+            return Store.page.home.NoMoreItems;
         },
 
-        methods: {
-        	/**
-        	 * changes the filter for home feed
-        	 *
-        	 * @return void
-        	 */
-        	changeFilter(filter) {
-        		if (Store.feedFilter == filter) return;
-
-        	    Store.feedFilter = filter;
-
-        	    this.putLS('feed-filter', filter);
-
-        	    this.refresh();
-        	},
-
-        	/**
-        	 * fires the refresh event
-        	 *
-        	 * @return void
-        	 */
-        	refresh() {
-        	    this.$eventHub.$emit('refresh-home');
-        	},
-
-        	/**
-        	 * In case the user has just joined to the Voten community let's ask them for the awesome Desktop notifications permission.
-        	 *
-        	 * @return void
-        	 */
-        	askNotificationPermission() {
-                 if (this.$route.query.newbie == 1) {
-                     if ('Notification' in window) {
-                         Notification.requestPermission()
-                     } else {
-                         console.log('Your browser does not support desktop notifications. ')
-                     }
-                 }
-        	}
+        nothingFound() {
+            return Store.page.home.nothingFound;
         },
+
+        submissions() {
+            return Store.page.home.submissions;
+        },
+
+        loading() {
+            return Store.page.home.loading;
+        },
+
+        sort() {
+            return this.$route.query.sort ? this.$route.query.sort : 'hot';
+        },
+
+        page() {
+            return Store.page.home.page;
+        },
+
+        uniqueList() {
+            return _.uniqBy(this.submissions, 'id');
+        }
+    },
+
+    methods: {
+        loadMore() {
+            console.log('load more');
+            Store.page.home.getSubmissions(this.sort);
+        },
+
+        refresh: _.debounce(
+            function() {
+                this.refreshing = true;
+
+                Store.page.home.clear();
+
+                Store.page.home
+                    .getSubmissions(this.sort)
+                    .then(() => {
+                        this.refreshing = false;
+                    })
+                    .catch(() => {
+                        this.refreshing = false;
+                    });
+            },
+            200,
+            { leading: true, trailing: false }
+        ),
+
+        submit() {
+            this.$eventHub.$emit('submit');
+        },
+
+        startTour() {
+            if (this.$route.query.newbie == 1) {
+                Store.tour.show = true;
+            }
+        }
     }
+};
 </script>

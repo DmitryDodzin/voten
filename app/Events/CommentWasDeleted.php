@@ -2,6 +2,7 @@
 
 namespace App\Events;
 
+use App\Http\Resources\CommentResource;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -13,16 +14,18 @@ class CommentWasDeleted implements ShouldBroadcast
 
     public $comment;
     public $submission;
+    public $deletedByAuthor;
 
     /**
      * Create a new event instance.
      *
      * @return void
      */
-    public function __construct($comment, $submission)
+    public function __construct($comment, $submission, $deletedByAuthor)
     {
         $this->comment = $comment;
         $this->submission = $submission;
+        $this->deletedByAuthor = $deletedByAuthor;
         $this->dontBroadcastToCurrentUser();
     }
 
@@ -34,5 +37,17 @@ class CommentWasDeleted implements ShouldBroadcast
     public function broadcastOn()
     {
         return ['submission.'.$this->submission->slug];
+    }
+
+    /**
+     * Get the data to broadcast.
+     *
+     * @return array
+     */
+    public function broadcastWith()
+    {
+        return [
+            'data' => (new CommentResource($this->comment))->resolve(),
+        ];
     }
 }

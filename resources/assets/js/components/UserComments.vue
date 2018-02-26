@@ -1,122 +1,115 @@
 <template>
-    <section class="container margin-top-1 col-7">
+	<div class="padding-bottom-10 flex1" :class="{'flex-center' : nothingFound}" id="comments-index" 
+		v-infinite-scroll="loadMore" infinite-scroll-disabled="cantLoadMore" @scroll.passive="scrolled"
+	>
 		<section class="box-typical comments" id="comments-section" v-if="comments.length">
-	    	<div class="box-typical-inner ui threaded comments">
-	    		<div v-for="c in comments">
-			        <comment :list="c" :comments-order="'created_at'"></comment>
-			    </div>
-	    	</div>
-	    </section>
-
-        <no-content v-if="nothingFound" :text="'This user has not commented on anything'"></no-content>
-
-        <loading v-if="loading"></loading>
-
-	    <no-more-items :text="'No more items to load'" v-if="NoMoreItems && !nothingFound"></no-more-items>
-    </section>
+			<div class="box-typical-inner ui threaded comments">
+				<div v-for="c in comments" class="v-comment-not-full" :key="c.id">
+					<comment :list="c" :comments-order="'created_at'"></comment>
+				</div>
+			</div>
+		</section>
+	
+		<no-content v-if="nothingFound" :text="'This user has not commented on anything'"></no-content>
+	
+		<loading v-if="loading && page > 1"></loading>
+	
+		<no-more-items :text="'No more items to load'" v-if="NoMoreItems && !nothingFound"></no-more-items>
+	</div>
 </template>
 
 <script>
-    import Loading from '../components/Loading.vue';
-    import Comment from '../components/Comment.vue';
-    import NoContent from '../components/NoContent.vue';
-    import NoMoreItems from '../components/NoMoreItems.vue';
-    import Helpers from '../mixins/Helpers';
+import Comment from '../components/Comment.vue';
+import NoContent from '../components/NoContent.vue';
+import NoMoreItems from '../components/NoMoreItems.vue';
+import Loading from '../components/Loading.vue';
+import Helpers from '../mixins/Helpers';
 
-    export default {
-    	mixins: [Helpers],
+export default {
+    mixins: [Helpers],
 
-        components: {
-            Loading,
-            Comment,
-            NoContent,
-            NoMoreItems
+    components: {
+        Comment,
+        NoContent,
+        Loading,
+        NoMoreItems
+    },
+
+    computed: {
+        NoMoreItems() {
+            return Store.page.user.comments.NoMoreItems;
         },
 
-        data () {
-            return {
-            	NoMoreItems: false,
-	            page: 0,
-                comments: [],
-                loading: true,
-                nothingFound: false
+        comments() {
+            return Store.page.user.comments.comments;
+        },
+
+        loading() {
+            return Store.page.user.comments.loading;
+        },
+
+        page() {
+            return Store.page.user.comments.page;
+        },
+
+        nothingFound() {
+            return Store.page.user.comments.nothingFound;
+        },
+
+        cantLoadMore() {
+            return this.loading || this.NoMoreItems || this.nothingFound;
+        }
+    },
+
+    created() {
+        this.setPageTitle('Comments | @' + this.$route.params.username);
+    },
+
+    beforeRouteEnter(to, from, next) {
+        Store.page.user.comments.clear();
+
+        if (Store.page.user.comments.page === 0) {
+            if (typeof app != 'undefined') {
+                app.$Progress.start();
             }
-        },
 
-        created () {
-            this.$eventHub.$on('scrolled-to-bottom', this.loadMore);
-            this.getComments();
-            this.setPageTitle('@' + this.$route.params.username);
-        },
+            Promise.all([
+                Store.page.user.comments.getComments(to.params.username),
+                Store.page.user.getUser(to.params.username)
+            ]).then(() => {
+                next((vm) => {
+                    vm.$Progress.finish();
+                });
+            });
+        } else {
+            next((vm) => {
+                vm.$Progress.finish();
+            });
+        }
+    },
 
-       	watch: {
-	    	'$route': function () {
-	    		this.clearContent();
-	    		this.getComments();
-	    	}
-	    },
+    beforeRouteUpdate(to, from, next) {
+        if (to.hash !== from.hash) return;
 
+        Store.page.user.comments.clear();
 
-        methods: {
-            loadMore() {
-				if (Store.contentRouter == 'content' && !this.loading && !this.NoMoreItems) {
-					this.getComments();
-				}
-			},
+        this.$Progress.start();
 
-        	clearContent() {
-               	this.comments = []
-                this.loading = true
-                this.nothingFound = false
-        	},
+        Promise.all([
+            Store.page.user.comments.getComments(to.params.username),
+            Store.page.user.getUser(to.params.username, false)
+        ]).then((values) => {
+            Store.page.user.setUser(values[1]);
+            this.setPageTitle('Comments | @' + to.params.username);
+            this.$Progress.finish();
+            next();
+        });
+    },
 
-        	/**
-        	 * Fetches user's comments
-        	 *
-        	 * @return void
-        	 */
-        	getComments() {
-                this.loading = true
-				this.page ++
-
-				if (preload.comments && this.$route.name == 'user-comments' && this.page == 1) {
-	        		this.comments = preload.comments.data;
-
-					if (!this.comments.length) {
-						this.nothingFound = true
-					}
-
-					if (preload.comments.next_page_url == null) {
-						this.NoMoreItems = true
-					}
-
-					this.loading = false;
-
-					// clear the preload
-					delete preload.comments;
-
-					return;
-	        	}
-
-        		axios.get('/user-comments', {
-        			params: {
-        				page: this.page,
-	    				username: this.$route.params.username
-        			}
-	    		}).then((response) => {
-                    this.comments = [...this.comments, ...response.data.data]
-
-                    if (response.data.next_page_url == null) {
-						this.NoMoreItems = true
-					}
-
-	                if( this.comments.length < 1 ) {
-	                	this.nothingFound = true
-	                }
-
-                    this.loading = false
-	            });
-        	}
+    methods: {
+        loadMore() {
+            Store.page.user.comments.getComments(this.$route.params.username);
         }
     }
+};
 </script>

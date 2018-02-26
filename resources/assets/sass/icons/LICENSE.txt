@@ -19,13 +19,13 @@ Font license info
    Homepage:  http://fortawesome.github.com/Font-Awesome/
 
 
-## Elusive
+## MFG Labs
 
-   Copyright (C) 2013 by Aristeides Stathopoulos
+   Copyright (C) 2012 by Daniel Bruce
 
-   Author:    Aristeides Stathopoulos
+   Author:    MFG Labs
    License:   SIL (http://scripts.sil.org/OFL)
-   Homepage:  http://aristeides.com/
+   Homepage:  http://www.mfglabs.com/
 
 
 ## Linecons
@@ -35,15 +35,6 @@ Font license info
    Author:    Designmodo for Smashing Magazine
    License:   CC BY ()
    Homepage:  http://designmodo.com/linecons-free/
-
-
-## MFG Labs
-
-   Copyright (C) 2012 by Daniel Bruce
-
-   Author:    MFG Labs
-   License:   SIL (http://scripts.sil.org/OFL)
-   Homepage:  http://www.mfglabs.com/
 
 
 ## Modern Pictograms
@@ -62,6 +53,15 @@ Font license info
    Author:    Stephen Hutchings
    License:   SIL (http://scripts.sil.org/OFL)
    Homepage:  http://typicons.com/
+
+
+## Elusive
+
+   Copyright (C) 2013 by Aristeides Stathopoulos
+
+   Author:    Aristeides Stathopoulos
+   License:   SIL (http://scripts.sil.org/OFL)
+   Homepage:  http://aristeides.com/
 
 
 ## Brandico

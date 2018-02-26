@@ -1,5 +1,5 @@
 export default {
-    data: function () {
+    data: function() {
         return {
             allowedDomains: [
                 'youtube.com',
@@ -8,13 +8,15 @@ export default {
                 'vimeo.com',
                 'twitch.tv'
             ]
-        }
+        };
     },
 
-
     computed: {
-        isValidSourceForEmbed(){
-            return this.allowedDomains.indexOf(this.submission.data.domain) != -1
+        isValidSourceForEmbed() {
+            return (
+                this.allowedDomains.indexOf(this.submission.content.domain) !=
+                -1
+            );
         }
     }
 };

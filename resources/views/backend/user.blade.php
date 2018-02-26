@@ -23,7 +23,7 @@
                                 {{ csrf_field() }}
                                 {{ method_field('delete') }}
 
-                                <input type="hidden" name="category" value="all">
+                                <input type="hidden" name="channel" value="all">
 
                                 <input type="hidden" name="user_id" value="{{ $user->id }}">
 
@@ -103,15 +103,15 @@
                         </td>
                     </tr>
                     <tr>
-                        <td>Submission Karma</td>
+                        <td>Submission Xp</td>
                         <td class="align-right">
-                            {{ $user->stats['submission_karma'] }}
+                            {{ $user->stats['submission_xp'] }}
                         </td>
                     </tr>
                     <tr>
-                        <td>Comment Karma</td>
+                        <td>Comment Xp</td>
                         <td class="align-right">
-                            {{ $user->stats['comment_karma'] }}
+                            {{ $user->stats['comment_xp'] }}
                         </td>
                     </tr>
                     <tr>
@@ -212,7 +212,7 @@
 
                             <input type="hidden" value="{{ $user->username }}" name="username">
 
-                            <input type="hidden" value="all" name="category">
+                            <input type="hidden" value="all" name="channel">
 
                             <p class="control">
                                 <button class="button is-primary" type="submit">

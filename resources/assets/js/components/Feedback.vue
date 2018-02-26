@@ -1,109 +1,127 @@
 <template>
-    <div class="v-modal-small user-select" :class="{ 'width-100': !sidebar }">
-        <div class="v-modal-small-box" v-on-clickaway="close">
-            <div class="flex1" v-if="! messageSent">
-                <p>
-                    Please choose the subject of your feedback and say a few words about it:
-                </p>
+	<el-dialog title="Give Feedback"
+	           :visible="visible"
+	           :width="isMobile ? '99%' : '600px'"
+	           @close="close"
+	           append-to-body
+	           class="user-select">
+		<section class="user-select"
+		         id="feedback-modal">
+			<el-form label-position="top"
+			         label-width="10px">
+				<p>
+					Please pick a subject for your feedback and tell us a few words about it. We review all feedbacks; however, we may not write back to all of them.
+				</p>
 
-                <div class="form-group grouped fields">
-                    <div class="field">
-                        <div class="ui radio checkbox">
-                            <input type="radio" value="Report a bug" tabindex="0" class="hidden" v-model="subject">
-                            <label>Report a bug</label>
-                        </div>
-                    </div>
-                    <div class="field">
-                        <div class="ui radio checkbox">
-                            <input type="radio" value="Thumbs-up about a feature" tabindex="0" class="hidden" v-model="subject">
-                            <label>Thumbs-up about a feature</label>
-                        </div>
-                    </div>
-                    <div class="field">
-                        <div class="ui radio checkbox">
-                            <input type="radio" value="Suggestion" tabindex="0" class="hidden" v-model="subject">
-                            <label>Suggestion</label>
-                        </div>
-                    </div>
-                    <div class="field">
-                        <div class="ui radio checkbox">
-                            <input type="radio" value="Other" tabindex="0" class="hidden" v-model="subject">
-                            <label>Other</label>
-                        </div>
-                    </div>
-                </div>
+				<el-form-item label="Subject">
+					<el-select v-model="subject"
+					           placeholder="Subject">
+						<el-option v-for="item in subjects"
+						           :key="item"
+						           :label="item"
+						           :value="item">
+						</el-option>
+					</el-select>
+				</el-form-item>
 
-                <div class="form-group">
-                    <textarea name="name" class="form-control" rows="2" id="feedback"
-                        placeholder="Desciption..."
-                        v-model="description"
-                    ></textarea>
-                </div>
+				<el-form-item label="Desciption">
+					<el-input type="textarea"
+					          v-model="description"
+					          placeholder="Desciption..."
+					          name="description"
+					          :maxlength="2000"
+					          ref="description"
+					          :autosize="{ minRows: 4, maxRows: 10}"></el-input>
+				</el-form-item>
+			</el-form>
+		</section>
 
-                <button type="button" class="v-button v-button--green" :disabled="!description"
-                @click="send" >
-                    Send Feedback
-                </button>
+		<!-- submit -->
+		<span slot="footer"
+		      class="dialog-footer">
+			<el-button type="text"
+			           @click="close"
+			           size="medium"
+			           class="margin-right-1">
+				Cancel
+			</el-button>
 
-                <button type="button" class="v-button v-button--red"
-                    data-toggle="tooltip" data-placement="bottom" title="Close (esc)"
-                    @click="close">
-                    Cancel
-                </button>
-            </div>
-
-            <div class="padding-top-bottom-3 sent align-center" v-else>
-                <i class="v-icon v-success" aria-hidden="true"
-                    :class="{ 'rubberBand animated': messageSent }"
-                ></i>
-
-                <p>
-                    Thank you for helping us creating something amazing!
-                </p>
-            </div>
-        </div>
-    </div>
+			<el-button round type="success"
+			           @click="send"
+			           :loading="sending"
+			           :disabled="!description.trim()"
+			           size="medium">
+				Send Feedback
+			</el-button>
+		</span>
+	</el-dialog>
 </template>
 
-	<script>
-    import { mixin as clickaway } from 'vue-clickaway';
+<script>
+import Helpers from '../mixins/Helpers';
 
-	export default {
-		props: ['sidebar'],
+export default {
+    mixins: [Helpers],
 
-        mixins: [ clickaway ],
+    props: ['visible'],
 
-	    data () {
-	        return {
-	            subject: 'Report a bug',
-	            description: '',
-	            messageSent: false,
-	        }
-	    },
+    data() {
+        return {
+            sending: false,
+            subject: 'Report a bug',
+            description: '',
+            subjects: [
+                'Report a bug',
+                'Thumbs-up about a feature',
+                'Suggestion',
+                'Other'
+            ]
+        };
+    },
 
-		mounted: function () {
-			this.$nextTick(function () {
-		    	this.$root.loadCheckBox()
-				this.$root.autoResize()
-		    	document.getElementById('feedback').focus()
-			})
-		},
+    mounted() {
+        this.$nextTick(function() {
+            this.$refs.description.$refs.textarea.focus();
+        });
+    },
 
-	    methods: {
-	        send: function(){
-	            this.messageSent = true
+    beforeDestroy() {
+        if (window.location.hash == '#feedback') {
+            history.go(-1);
+        }
+    },
 
-	            axios.post( '/feedback', {
-	                subject: this.subject,
-	                description: this.description
-	            })
+    created() {
+        window.location.hash = 'feedback';
+    },
 
-	            setTimeout(function () { this.close() }.bind(this), 1500)
-	        },
+    methods: {
+        close() {
+            this.$emit('update:visible', false);
+        },
 
-	    	close () {
-	    		this.$eventHub.$emit('close')
-	    	},
-	    },
-	}
+        send() {
+            this.sending = true;
+
+            axios
+                .post('/feedbacks', {
+                    subject: this.subject,
+                    description: this.description
+                })
+                .then(() => {
+                    this.sending = false;
+
+                    this.$message({
+                        message: 'Feedback recieved. Thanks for caring!',
+                        type: 'success'
+                    });
+
+                    this.close();
+                })
+                .catch((error) => {
+                    this.sending = false;
+                });
+        }
+    }
+};
 </script>

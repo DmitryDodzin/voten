@@ -13,15 +13,15 @@ class CreateSubmissionsTable extends Migration
             $table->string('title');
             $table->string('type');
             $table->json('data');
-            $table->string('category_name')->index();
-            $table->float('rate')->index();
+            $table->string('channel_name')->index();
+            $table->float('rate')->index()->nullable();
 
             // Used for resubmit feature.
             $table->integer('resubmit_id')->unsigned()->index()->nullable();
 
             $table->integer('user_id')->unsigned()->index();
             $table->boolean('nsfw')->default(0);
-            $table->integer('category_id')->unsigned();
+            $table->integer('channel_id')->unsigned();
 
             $table->integer('upvotes')->default(1);
             $table->integer('downvotes')->default(0);
